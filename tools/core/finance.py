@@ -19,6 +19,26 @@ DEFAULT_ANNUAL_RATE: float = 0.05  # 5 % p.a. — stated in every agent response
 MAX_SCENARIOS: int = 3
 
 
+# ── Rate validation helper ────────────────────────────────────────────────────
+
+
+def _validate_rates(**rates: float) -> None:
+    """Raise ValueError if any rate is > 1 (caller passed a percentage, not a decimal).
+
+    Args:
+        **rates: Keyword arguments mapping parameter names to their values.
+
+    Raises:
+        ValueError: If any rate value is greater than 1.
+    """
+    for name, value in rates.items():
+        if value > 1:
+            raise ValueError(
+                f"{name} must be a decimal (e.g. 0.20 for 20%), got {value}. "
+                "rates must be decimals, e.g. 0.20 for 20%"
+            )
+
+
 # ── Core functions ────────────────────────────────────────────────────────────
 
 
@@ -114,6 +134,7 @@ def project_savings_growth(
         raise ValueError(f"monthly_contribution must be >= 0, got {monthly_contribution}")
     if annual_rate < 0:
         raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
+    _validate_rates(annual_rate=annual_rate)
     if months <= 0:
         raise ValueError(f"months must be > 0, got {months}")
 
@@ -276,6 +297,7 @@ def debt_payoff_months(
         raise ValueError(f"monthly_payment must be > 0, got {monthly_payment}")
     if annual_rate < 0:
         raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
+    _validate_rates(annual_rate=annual_rate)
 
     r = annual_rate / 12
 
@@ -406,6 +428,7 @@ def debt_vs_invest(
             f"monthly_surplus ({monthly_surplus}) must be greater than "
             f"min_monthly_payment ({min_monthly_payment}) so there is something to invest."
         )
+    _validate_rates(annual_debt_rate=annual_debt_rate, annual_invest_rate=annual_invest_rate)
     # Check Strategy B is viable: min payment must cover first month's interest
     first_month_interest = balance * (annual_debt_rate / 12)
     if annual_debt_rate > 0 and min_monthly_payment <= first_month_interest:
@@ -756,6 +779,7 @@ def financial_health_check(
     ]:
         if val < 0:
             raise ValueError(f"{name} must be >= 0, got {val}")
+    _validate_rates(annual_debt_rate=annual_debt_rate, assumed_invest_rate=assumed_invest_rate)
 
     # ── Derived metrics ────────────────────────────────────────────────────────
     cash_flow = round(
@@ -904,6 +928,7 @@ def goal_plan(
         raise ValueError(f"monthly_headroom must be >= 0, got {monthly_headroom}")
     if annual_rate < 0:
         raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
+    _validate_rates(annual_rate=annual_rate)
 
     remaining = max(0.0, target_amount - current_saved)
     monthly_rate = annual_rate / 12
@@ -1007,6 +1032,7 @@ def debt_schedule(
         raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
     if months <= 0:
         raise ValueError(f"months must be > 0, got {months}")
+    _validate_rates(annual_rate=annual_rate)
 
     monthly_rate = annual_rate / 12
     result: list[float] = []
@@ -1051,6 +1077,7 @@ def savings_schedule(
         raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
     if months <= 0:
         raise ValueError(f"months must be > 0, got {months}")
+    _validate_rates(annual_rate=annual_rate)
 
     monthly_rate = annual_rate / 12
     result: list[float] = []
@@ -1114,6 +1141,7 @@ def multi_debt_plan(
             raise ValueError(f"debt[{i}] balance must be >= 0")
         if d["apr"] < 0:
             raise ValueError(f"debt[{i}] apr must be >= 0")
+        _validate_rates(**{f"debt[{i}].apr": d["apr"]})
         if d["min_payment"] <= 0:
             raise ValueError(f"debt[{i}] min_payment must be > 0")
 
