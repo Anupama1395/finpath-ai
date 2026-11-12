@@ -8,8 +8,8 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 |---|--------|--------|----------------|
 | 1 | Repo cleanup | ✅ done | `paridhi_01_cleanup.png` |
 | 2 | Rate validation (percent vs. decimal bug) | ✅ done | `paridhi_02_rate-validation.png` |
-| 3 | Architecture diagram (Mermaid) | ⏳ planned | `paridhi_03_architecture.png` |
-| 4 | README: Built with Bob / Data sources / Responsible AI | ⏳ planned | `paridhi_04_readme.png` |
+| 3 | Architecture diagram (Mermaid) | ✅ done | `paridhi_03_architecture.png` |
+| 4 | README: Built with Bob / Data sources / Responsible AI | 🔨 in progress | `paridhi_04_readme.png` |
 | 5 | Deployable to Streamlit Cloud (secrets) | 🤝 needs your OK | `*_05_deploy.png` |
 | 6 | Demo-mode fallback | 🤝 needs your OK | `*_06_demo-mode.png` |
 
@@ -39,9 +39,14 @@ Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
 ## 3. Architecture diagram
 
-**What:** Added a Mermaid flowchart to `docs/ARCHITECTURE.md`: User → Streamlit UI → `api_client` → watsonx Orchestrate agent (ReAct) → tool wrappers → `tools/core/finance.py`, with the guardrails labelled (tool-only numbers, no product recommendations, disclaimer).
+**What:** Extended your existing `docs/ARCHITECTURE.md`. Everything you wrote stays as is (ASCII overview, design principles, data flow, auth). I added:
+- a **Mermaid flowchart** (User → Streamlit UI → `api_client` → Orchestrate agent (ReAct) → tool wrappers → `tools/core/finance.py`)
+- a **Tool reference** table with all 12 registered tools, their wrapper files, and what each one calculates
+- a **Guardrails** section summarising the rules in `finpath_agent.yaml` (tool-only numbers, multi-turn old-vs-new comparison, stated assumptions and defaults, no product recommendations, mandatory disclaimer, `_verify_figures()` ±$0.51 cross-check)
 
-**Why:** The presentation template needs an architecture slide, and the judges' "design" criterion rewards a clear system design. GitHub renders Mermaid natively, so the diagram stays up to date in the repo, and we can screenshot it for the video.
+**Why:** The presentation template needs an architecture slide, and the judges' "design" criterion rewards a clear system design. GitHub renders Mermaid natively, so the diagram is easy to read on the repo page and easy to screenshot for the video. The tool table and guardrails let judges see quickly what the agent can and can't do.
+
+**Checked by:** Compared the tool names, defaults (5% growth, 12-month horizon, 7% invest rate), disclaimer text and `_verify_figures` tolerance with the actual code. Fixed curly quotes / `\n` line breaks that broke Bob's first Mermaid draft, and checked it renders on mermaid.live. The diff is **103 insertions, 0 deletions**, so none of your original content was removed.
 
 ---
 
