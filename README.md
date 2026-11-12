@@ -147,3 +147,40 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full system diagram a
 <!-- Add demo video link here before submission -->
 
 See [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) for the 3-minute walkthrough script.
+
+---
+
+## Built with IBM Bob
+
+IBM Bob was used during development to make and verify the following changes (session screenshots in [`bob_sessions/`](bob_sessions/)):
+
+- **Repo cleanup**: untracked cached `__pycache__`/`.pyc` files and `.coverage`, removed a stray `gitignore` file, and tightened `.gitignore`. All 193 existing tests still passed. ([screenshot](bob_sessions/paridhi_01_cleanup.png))
+- **Rate-validation bug fix + tests**: added `_validate_rates` to `tools/core/finance.py`, so any rate > 1 (e.g. `20` instead of `0.20`) raises a clear error instead of silently computing a 2000% rate. Added 24 regression tests; 217 tests pass. ([screenshot](bob_sessions/paridhi_02_rate-validation.png))
+- **Architecture docs**: added a Mermaid system diagram, a tool reference for all 12 tools, and a guardrails summary to [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). ([screenshot](bob_sessions/paridhi_03_architecture.png))
+- **README**: drafted these Built with Bob, Data sources and Responsible AI sections, grounded in the repo files.
+---
+
+## Data sources
+
+All six profiles in [`data/profiles.json`](data/profiles.json) are fully synthetic — no real personal, client, or confidential data is used anywhere in this project. The profiles are:
+
+| ID | Label |
+|---|---|
+| `recent_graduate` | Recent Graduate — Entry-level job |
+| `mid_career` | Mid-career — Stable income, growing savings |
+| `debt_focused` | Debt-focused — High-interest debt, limited savings |
+| `student` | Student — Part-time work |
+| `early_career` | Early career — First full-time job |
+| `family` | Family — Dual income, one child |
+
+All calculations are deterministic, pure Python in [`tools/core/finance.py`](tools/core/finance.py) — no external APIs, no ML inference, stdlib only.
+
+---
+
+## Responsible AI
+
+- **Every number comes from a tool call.** The agent never computes, estimates, or rounds figures itself; all outputs are quoted directly from tool results (rule 1 in [`agents/finpath_agent.yaml`](agents/finpath_agent.yaml)).
+- **Assumptions and defaults are always stated.** Every response lists the exact input values used, and any applied defaults (5% growth rate, 12-month horizon, 7% investment rate) are explicitly declared.
+- **No product recommendations.** The agent never recommends specific financial products, securities, mutual funds, ETFs, or any buy/sell action.
+- **Every reply ends with** "This is educational information, not financial advice." (rule 8 in [`agents/finpath_agent.yaml`](agents/finpath_agent.yaml)).
+- **`_verify_figures()` cross-checks figures** — [`app/api_client.py`](app/api_client.py) extracts every dollar amount and percentage from the agent reply and matches them against raw tool outputs; the UI shows a ✓ verified badge on pass or a ⚠ warning on mismatch, and tool-call chips are always displayed for full transparency.
