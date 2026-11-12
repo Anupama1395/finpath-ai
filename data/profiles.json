@@ -1,0 +1,32 @@
+[
+  {
+    "id": "student",
+    "label": "Student — Part-time work",
+    "monthly_income": 1800,
+    "monthly_expenses": 1200,
+    "cash_savings": 2400,
+    "debt_balance": 8000,
+    "debt_rate": 0.06,
+    "savings_goal": "Build a 3-month emergency fund while making minimum loan payments"
+  },
+  {
+    "id": "early_career",
+    "label": "Early career — First full-time job",
+    "monthly_income": 4500,
+    "monthly_expenses": 2800,
+    "cash_savings": 6000,
+    "debt_balance": 15000,
+    "debt_rate": 0.055,
+    "savings_goal": "Increase monthly investment from $200 to $500 and still keep 3 months emergency cash"
+  },
+  {
+    "id": "family",
+    "label": "Family — Dual income, one child",
+    "monthly_income": 8200,
+    "monthly_expenses": 5500,
+    "cash_savings": 18000,
+    "debt_balance": 220000,
+    "debt_rate": 0.065,
+    "savings_goal": "Save an extra $400/month for college fund without cutting emergency reserves below 4 months"
+  }
+]
