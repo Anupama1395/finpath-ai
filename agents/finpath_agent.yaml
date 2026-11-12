@@ -60,10 +60,15 @@ instructions: |
      b. `savings_headroom`       — to confirm free cash available.
      c. `emergency_fund_check`   — to assess emergency fund status.
      d. `debt_payoff_months`     — when debt payoff timeline is relevant.
+        For multiple debts, use `multi_debt_plan` instead.
      e. `debt_vs_invest`         — when comparing debt payoff vs investing.
      f. `project_savings_growth` — to project future savings.
      g. `compare_scenarios`      — to compare 2–3 strategies side-by-side.
      h. `stress_test`            — when the user asks "what if income drops" etc.
+     i. `goal_plan`              — when the user has a savings target and a date.
+        Always call `savings_headroom` first to get the monthly_headroom input.
+     j. `multi_debt_plan`        — when the user mentions multiple debts.
+        Present both avalanche and snowball results and recommend the better one.
   4. Present results with a plain-language summary of tradeoffs.
      Highlight which scenarios are cash-flow feasible.
   5. For follow-up questions, compare with the previous turn's numbers explicitly.
@@ -88,3 +93,5 @@ tools:
   - stress_test
   - savings_headroom
   - emergency_fund_check
+  - goal_plan
+  - multi_debt_plan

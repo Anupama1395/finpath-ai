@@ -95,12 +95,13 @@ def _extract_text(content: Any) -> str:
     return str(content) if content else ""
 
 
-def _extract_tools(messages: list[dict]) -> list[str]:
-    """Return tool names called during the latest assistant turn, in call order."""
+def _extract_tools_and_outputs(messages: list[dict]) -> tuple[list[str], list[str]]:
+    """Return (tool_names, tool_output_texts) for the latest assistant turn."""
     for msg in reversed(messages):
         if not isinstance(msg, dict) or msg.get("role") != "assistant":
             continue
         names: list[str] = []
+        outputs: list[str] = []
         for step in msg.get("step_history", []):
             for detail in step.get("step_details", []):
                 if detail.get("type") == "tool_calls":
@@ -108,9 +109,49 @@ def _extract_tools(messages: list[dict]) -> list[str]:
                         name = tc.get("name") or tc.get("function", {}).get("name", "")
                         if name and name not in names:
                             names.append(name)
+                        # Collect tool output text for verification
+                        output = tc.get("output") or tc.get("result") or ""
+                        if isinstance(output, dict):
+                            output = str(output)
+                        if output:
+                            outputs.append(str(output))
         if names:
-            return names
-    return []
+            return names, outputs
+    return [], []
+
+
+def _verify_figures(reply: str, tool_outputs: list[str]) -> bool | None:
+    """Cross-check every dollar amount and percentage in the reply against tool outputs.
+
+    Returns True if all figures found in tool outputs (within rounding),
+    False if at least one figure cannot be matched, None if no figures in reply.
+    """
+    import re
+    if not tool_outputs:
+        return None
+
+    # Extract all dollar amounts and percentages from the reply
+    dollar_pattern = re.compile(r'\$\s*([\d,]+(?:\.\d{1,2})?)')
+    pct_pattern    = re.compile(r'([\d]+(?:\.\d{1,2})?)\s*%')
+
+    all_outputs_text = " ".join(tool_outputs)
+
+    dollar_figures = [float(m.replace(",", "")) for m in dollar_pattern.findall(reply)]
+    pct_figures    = [float(m) for m in pct_pattern.findall(reply)]
+    all_figures    = dollar_figures + pct_figures
+
+    if not all_figures:
+        return None
+
+    unverified = []
+    for fig in all_figures:
+        # Look for the figure (±0.51 rounding tolerance) in tool output text
+        pattern = re.compile(r'[\d,]+(?:\.\d{1,2})?')
+        output_numbers = [float(m.replace(",","")) for m in pattern.findall(all_outputs_text)]
+        if not any(abs(fig - n) < 0.51 for n in output_numbers):
+            unverified.append(fig)
+
+    return len(unverified) == 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -180,14 +221,17 @@ def ask_agent(
                 reply_text = _extract_text(msg.get("content", ""))
                 break
 
-        tools = _extract_tools(all_msgs)
+        tools, tool_outputs = _extract_tools_and_outputs(all_msgs)
+        verified = _verify_figures(reply_text, tool_outputs)
 
         print(f"[FinPath] tools called: {tools or '(none)'}")
+        print(f"[FinPath] verified: {verified}")
 
         return {
             "reply":     reply_text or "No response received from agent.",
             "tools":     tools,
             "thread_id": new_thread_id,
+            "verified":  verified,
         }
 
     except (RuntimeError, TimeoutError):

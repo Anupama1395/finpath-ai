@@ -856,3 +856,354 @@ def financial_health_check(
         "priorities":             priorities,
         "summary":                summary,
     }
+
+
+# ── Goal plan ──────────────────────────────────────────────────────────────────
+
+
+def goal_plan(
+    target_amount: float,
+    months_to_goal: int,
+    current_saved: float,
+    monthly_headroom: float,
+    annual_rate: float = 0.0,
+) -> dict:
+    """Calculate whether a savings goal is feasible and what monthly amount is needed.
+
+    Assumes end-of-month contributions compounding at annual_rate / 12 per month.
+    If annual_rate == 0, uses simple accumulation (no compounding).
+
+    Args:
+        target_amount:    Dollar amount to reach (> 0).
+        months_to_goal:   Number of months until the target date (> 0).
+        current_saved:    Amount already saved toward this goal (>= 0).
+        monthly_headroom: Free cash available each month to allocate (>= 0).
+        annual_rate:      Expected annual growth rate as decimal (>= 0, default 0.0).
+
+    Returns:
+        Dict with keys:
+            required_monthly (float):           Monthly saving needed to reach target.
+            feasible (bool):                    True if monthly_headroom >= required_monthly.
+            shortfall_per_month (float):        required_monthly − monthly_headroom (0 if feasible).
+            months_needed_at_current_headroom (int | None):
+                                                Months needed at current headroom; None if
+                                                headroom is 0 and more saving is needed.
+            projected_at_headroom (float):      Amount accumulated if saving at headroom rate.
+            summary (str):                      Plain-language one-liner for the agent.
+
+    Raises:
+        ValueError: For clearly invalid inputs.
+    """
+    if target_amount <= 0:
+        raise ValueError(f"target_amount must be > 0, got {target_amount}")
+    if months_to_goal <= 0:
+        raise ValueError(f"months_to_goal must be > 0, got {months_to_goal}")
+    if current_saved < 0:
+        raise ValueError(f"current_saved must be >= 0, got {current_saved}")
+    if monthly_headroom < 0:
+        raise ValueError(f"monthly_headroom must be >= 0, got {monthly_headroom}")
+    if annual_rate < 0:
+        raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
+
+    remaining = max(0.0, target_amount - current_saved)
+    monthly_rate = annual_rate / 12
+
+    # ── Required monthly to hit target in exactly months_to_goal ──────────────
+    if monthly_rate == 0:
+        required_monthly = round(remaining / months_to_goal, 2)
+    else:
+        # Future value of annuity: FV = PMT * ((1+r)^n - 1) / r
+        # Solve for PMT: PMT = FV * r / ((1+r)^n - 1)
+        fv_factor = ((1 + monthly_rate) ** months_to_goal - 1) / monthly_rate
+        required_monthly = round(remaining / fv_factor, 2)
+
+    # ── Feasibility ────────────────────────────────────────────────────────────
+    feasible = monthly_headroom >= required_monthly
+    shortfall = round(max(0.0, required_monthly - monthly_headroom), 2)
+
+    # ── How long at current headroom ──────────────────────────────────────────
+    if monthly_headroom <= 0:
+        months_at_headroom: int | None = None
+        projected = round(current_saved, 2)
+    elif monthly_rate == 0:
+        months_at_headroom = (
+            int(-(-remaining // monthly_headroom))  # ceiling division
+            if remaining > 0 else 0
+        )
+        projected = round(current_saved + monthly_headroom * months_to_goal, 2)
+    else:
+        # Find n such that PMT * ((1+r)^n - 1)/r >= remaining
+        # Solve numerically: n = log(1 + remaining*r/PMT) / log(1+r)
+        import math
+        if monthly_headroom * (1 / monthly_rate) > remaining:
+            n_exact = math.log(1 + remaining * monthly_rate / monthly_headroom) / math.log(1 + monthly_rate)
+            months_at_headroom = int(math.ceil(n_exact))
+        else:
+            months_at_headroom = None  # never reaches goal at this headroom
+        projected = round(
+            current_saved + monthly_headroom * ((1 + monthly_rate) ** months_to_goal - 1) / monthly_rate,
+            2,
+        )
+
+    # ── Summary ────────────────────────────────────────────────────────────────
+    if feasible:
+        surplus = round(monthly_headroom - required_monthly, 2)
+        summary = (
+            f"Goal of ${target_amount:,.0f} in {months_to_goal} months is FEASIBLE. "
+            f"Required: ${required_monthly:,.2f}/mo. "
+            f"Your headroom: ${monthly_headroom:,.2f}/mo (${surplus:,.2f} to spare)."
+        )
+    else:
+        summary = (
+            f"Goal of ${target_amount:,.0f} in {months_to_goal} months needs ${required_monthly:,.2f}/mo "
+            f"but you only have ${monthly_headroom:,.2f}/mo free — "
+            f"shortfall of ${shortfall:,.2f}/mo. "
+            + (
+                f"At current headroom you'd reach it in {months_at_headroom} months."
+                if months_at_headroom is not None
+                else "At current headroom this goal may not be reachable."
+            )
+        )
+
+    return {
+        "required_monthly":                   required_monthly,
+        "feasible":                            feasible,
+        "shortfall_per_month":                 shortfall,
+        "months_needed_at_current_headroom":   months_at_headroom,
+        "projected_at_headroom":               projected,
+        "summary":                             summary,
+    }
+
+
+# ── Debt and savings schedules ─────────────────────────────────────────────────
+
+
+def debt_schedule(
+    balance: float,
+    monthly_payment: float,
+    annual_rate: float,
+    months: int = 60,
+) -> list[float]:
+    """Return a list of month-end debt balances over `months` months.
+
+    Stops at 0.0 once the debt is paid off (remaining entries stay 0.0).
+    If monthly_payment <= monthly interest the debt never pays off;
+    balances will grow — include all `months` entries.
+
+    Args:
+        balance:         Starting debt balance (>= 0).
+        monthly_payment: Fixed monthly payment amount (>= 0).
+        annual_rate:     Annual interest rate as decimal (>= 0).
+        months:          Number of months to project (> 0, default 60).
+
+    Returns:
+        List of `months` floats representing end-of-month balances.
+    """
+    if balance < 0:
+        raise ValueError(f"balance must be >= 0, got {balance}")
+    if monthly_payment < 0:
+        raise ValueError(f"monthly_payment must be >= 0, got {monthly_payment}")
+    if annual_rate < 0:
+        raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
+    if months <= 0:
+        raise ValueError(f"months must be > 0, got {months}")
+
+    monthly_rate = annual_rate / 12
+    result: list[float] = []
+    remaining = float(balance)
+
+    for _ in range(months):
+        if remaining <= 0:
+            result.append(0.0)
+            continue
+        interest = remaining * monthly_rate
+        remaining = remaining + interest - monthly_payment
+        remaining = max(0.0, remaining)
+        result.append(round(remaining, 2))
+
+    return result
+
+
+def savings_schedule(
+    start: float,
+    monthly_contribution: float,
+    annual_rate: float,
+    months: int = 60,
+) -> list[float]:
+    """Return a list of month-end savings balances over `months` months.
+
+    Each month: balance = (balance + monthly_contribution) * (1 + monthly_rate).
+
+    Args:
+        start:                Starting savings balance (>= 0).
+        monthly_contribution: Amount added each month (>= 0).
+        annual_rate:          Annual growth rate as decimal (>= 0).
+        months:               Number of months to project (> 0, default 60).
+
+    Returns:
+        List of `months` floats representing end-of-month balances.
+    """
+    if start < 0:
+        raise ValueError(f"start must be >= 0, got {start}")
+    if monthly_contribution < 0:
+        raise ValueError(f"monthly_contribution must be >= 0, got {monthly_contribution}")
+    if annual_rate < 0:
+        raise ValueError(f"annual_rate must be >= 0, got {annual_rate}")
+    if months <= 0:
+        raise ValueError(f"months must be > 0, got {months}")
+
+    monthly_rate = annual_rate / 12
+    result: list[float] = []
+    balance = float(start)
+
+    for _ in range(months):
+        balance = (balance + monthly_contribution) * (1 + monthly_rate)
+        result.append(round(balance, 2))
+
+    return result
+
+
+# ── Multi-debt plan ────────────────────────────────────────────────────────────
+
+
+def multi_debt_plan(
+    debts: list[dict],
+    extra_monthly: float = 0.0,
+) -> dict:
+    """Simulate avalanche and snowball debt payoff strategies.
+
+    Both strategies use the same total monthly budget:
+        sum of all min_payments + extra_monthly
+
+    Avalanche: apply extra to highest-APR debt first.
+    Snowball:  apply extra to smallest-balance debt first.
+
+    Each debt dict must have:
+        name (str):        Human-readable label.
+        balance (float):   Current outstanding balance (>= 0).
+        apr (float):       Annual interest rate as decimal (>= 0, e.g. 0.18).
+        min_payment (float): Minimum monthly payment (> 0).
+
+    Args:
+        debts:         List of debt dicts (1–10 debts).
+        extra_monthly: Extra monthly dollars applied on top of min payments (>= 0).
+
+    Returns:
+        Dict with keys:
+            avalanche (dict):   payoff_order, months, total_interest, schedule.
+            snowball (dict):    payoff_order, months, total_interest, schedule.
+            better_strategy (str): "avalanche" or "snowball" or "tie".
+            interest_saved (float): Interest saved by choosing the better strategy.
+            summary (str):      Plain-language one-liner.
+
+    Raises:
+        ValueError: For invalid inputs.
+    """
+    if not debts:
+        raise ValueError("debts must not be empty")
+    if len(debts) > 10:
+        raise ValueError(f"maximum 10 debts supported, got {len(debts)}")
+    if extra_monthly < 0:
+        raise ValueError(f"extra_monthly must be >= 0, got {extra_monthly}")
+
+    for i, d in enumerate(debts):
+        for key in ("name", "balance", "apr", "min_payment"):
+            if key not in d:
+                raise ValueError(f"debt[{i}] missing required key '{key}'")
+        if d["balance"] < 0:
+            raise ValueError(f"debt[{i}] balance must be >= 0")
+        if d["apr"] < 0:
+            raise ValueError(f"debt[{i}] apr must be >= 0")
+        if d["min_payment"] <= 0:
+            raise ValueError(f"debt[{i}] min_payment must be > 0")
+
+    def _simulate(debts_in: list[dict], priority_key: str, reverse: bool) -> dict:
+        """Run one payoff simulation with debts sorted by priority_key."""
+        import copy
+        state = copy.deepcopy(debts_in)
+        for d in state:
+            d["remaining"] = float(d["balance"])
+            d["paid_interest"] = 0.0
+
+        total_budget = sum(d["min_payment"] for d in state) + extra_monthly
+        payoff_order: list[str] = []
+        month = 0
+        MAX_MONTHS = 600  # 50-year cap to prevent infinite loop
+
+        while any(d["remaining"] > 0 for d in state) and month < MAX_MONTHS:
+            month += 1
+            # Accrue interest
+            for d in state:
+                if d["remaining"] > 0:
+                    interest = d["remaining"] * (d["apr"] / 12)
+                    d["remaining"] += interest
+                    d["paid_interest"] += interest
+
+            # Pay minimums first
+            available = total_budget
+            for d in state:
+                if d["remaining"] > 0:
+                    pay = min(d["min_payment"], d["remaining"])
+                    d["remaining"] = max(0.0, d["remaining"] - pay)
+                    available -= pay
+                    if d["remaining"] == 0 and d["name"] not in payoff_order:
+                        payoff_order.append(d["name"])
+
+            # Apply extra to priority debt
+            active = [d for d in state if d["remaining"] > 0]
+            if active and available > 0:
+                active_sorted = sorted(active, key=lambda x: x[priority_key], reverse=reverse)
+                target = active_sorted[0]
+                pay = min(available, target["remaining"])
+                target["remaining"] = max(0.0, target["remaining"] - pay)
+                if target["remaining"] == 0 and target["name"] not in payoff_order:
+                    payoff_order.append(target["name"])
+
+        return {
+            "payoff_order":    payoff_order,
+            "months":          month,
+            "total_interest":  round(sum(d["paid_interest"] for d in state), 2),
+        }
+
+    avalanche = _simulate(debts, "apr", reverse=True)
+    snowball   = _simulate(debts, "balance", reverse=False)
+
+    av_int = avalanche["total_interest"]
+    sn_int = snowball["total_interest"]
+
+    if av_int < sn_int:
+        better = "avalanche"
+        saved  = round(sn_int - av_int, 2)
+    elif sn_int < av_int:
+        better = "snowball"
+        saved  = round(av_int - sn_int, 2)
+    else:
+        better = "tie"
+        saved  = 0.0
+
+    mo_diff   = abs(avalanche["months"] - snowball["months"])
+    int_saved_str = f"${saved:,.2f}" if saved > 0 else "the same amount"
+
+    summary = (
+        f"Avalanche: {avalanche['months']} months, ${av_int:,.2f} total interest. "
+        f"Snowball: {snowball['months']} months, ${sn_int:,.2f} total interest. "
+        + (
+            f"Avalanche saves {int_saved_str} in interest"
+            + (f" and is {mo_diff} month(s) faster." if avalanche["months"] < snowball["months"] else ".")
+            if better == "avalanche"
+            else (
+                f"Snowball saves {int_saved_str} in interest"
+                + (f" and is {mo_diff} month(s) faster." if snowball["months"] < avalanche["months"] else ".")
+                if better == "snowball"
+                else "Both strategies cost the same."
+            )
+        )
+    )
+
+    return {
+        "avalanche":        avalanche,
+        "snowball":         snowball,
+        "better_strategy":  better,
+        "interest_saved":   saved,
+        "summary":          summary,
+    }
