@@ -7,14 +7,22 @@ Authentication is handled entirely by the ADK's instantiate_client()
 utility, which reads the active environment token from the ADK config
 files (~/.wxo/).  No secrets are read, stored, or logged here.
 
-Usage:
-    from api_client import ask_agent
-    reply, scenarios = ask_agent("Can I save $500/mo?", thread_id=None)
+Public API
+----------
+    ask_agent(message, profile, thread_id=None) -> dict
+        message:   plain question text (profile context is prepended here)
+        profile:   dict of financial fields from session state
+        thread_id: pass the returned thread_id on follow-ups to continue
+                   the same conversation thread
+
+    Returns a dict with keys:
+        reply      str   — agent's plain-text response
+        tools      list  — tool names called during this turn
+        thread_id  str   — thread ID to pass on the next call
 """
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
@@ -25,24 +33,49 @@ from ibm_watsonx_orchestrate.cli.commands.agents.agents_helper import get_agent_
 
 logger = logging.getLogger(__name__)
 
-AGENT_NAME = "finpath_agent"
-# Maximum seconds to wait for a run to complete before raising TimeoutError
+AGENT_NAME          = "finpath_agent"
 RUN_TIMEOUT_SECONDS = 120
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
 def _make_clients() -> tuple[RunClient, ThreadsClient]:
     """Return fresh ADK clients bound to the active environment."""
-    return (
-        instantiate_client(RunClient),
-        instantiate_client(ThreadsClient),
+    return instantiate_client(RunClient), instantiate_client(ThreadsClient)
+
+
+def _build_message(message: str, profile: dict) -> str:
+    """Prepend the full profile block to every message sent to the agent.
+
+    The debt rate is supplied in both percentage and decimal so the agent
+    can pass the correct decimal value to tools without conversion.
+    """
+    rate_pct     = profile.get("annual_debt_rate_pct", 0.0)   # e.g. 7.0
+    rate_decimal = rate_pct / 100                              # e.g. 0.07
+
+    block = (
+        "Current profile: "
+        f"monthly_income=${profile.get('monthly_income', 0):,}; "
+        f"monthly_expenses=${profile.get('monthly_expenses', 0):,}; "
+        f"monthly_savings_contribution=${profile.get('monthly_savings_contribution', 0):,}; "
+        f"current_savings=${profile.get('current_savings', 0):,}; "
+        f"debt_balance=${profile.get('debt_balance', 0):,}; "
+        f"annual_debt_rate={rate_pct:.2f}% ({rate_decimal:.4f}); "
+        f"monthly_debt_payment=${profile.get('monthly_debt_payment', 0):,}; "
+        f"goal={profile.get('goal', 'not specified')}.\n"
+        f"Question: {message}"
     )
+
+    # Print to terminal for verification — never prints tokens or API keys.
+    print("\n[FinPath → agent]\n" + block + "\n")
+
+    return block
 
 
 def _extract_text(content: Any) -> str:
-    """Pull plain text out of an Orchestrate message content field.
-
-    Content can be a plain string or a list of response-type dicts.
-    """
+    """Pull plain text out of an Orchestrate message content field."""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -57,105 +90,107 @@ def _extract_text(content: Any) -> str:
     return str(content) if content else ""
 
 
-def _extract_scenarios(text: str) -> list[dict] | None:
-    """Try to find a JSON list of scenario result dicts embedded in the reply.
+def _extract_tools(messages: list[dict]) -> list[str]:
+    """Return tool names called during the latest assistant turn, in call order."""
+    for msg in reversed(messages):
+        if not isinstance(msg, dict) or msg.get("role") != "assistant":
+            continue
+        names: list[str] = []
+        for step in msg.get("step_history", []):
+            for detail in step.get("step_details", []):
+                if detail.get("type") == "tool_calls":
+                    for tc in detail.get("tool_calls", []):
+                        name = tc.get("name") or tc.get("function", {}).get("name", "")
+                        if name and name not in names:
+                            names.append(name)
+        if names:
+            return names
+    return []
 
-    The agent is instructed to always call compare_scenarios; its tool
-    output is sometimes echoed as a JSON code block in the reply text.
-    Returns None if no parseable scenario list is found.
-    """
-    import re
 
-    # Look for ```json ... ``` or bare [...] blocks
-    patterns = [
-        r"```(?:json)?\s*(\[.*?\])\s*```",  # fenced code block
-        r"(\[\s*\{.*?\}\s*\])",              # bare JSON array
-    ]
-    for pat in patterns:
-        matches = re.findall(pat, text, re.DOTALL)
-        for raw in matches:
-            try:
-                data = json.loads(raw)
-                if (
-                    isinstance(data, list)
-                    and data
-                    and isinstance(data[0], dict)
-                    and "cash_flow" in data[0]
-                ):
-                    return data
-            except (json.JSONDecodeError, ValueError):
-                pass
-    return None
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Public API
+# ─────────────────────────────────────────────────────────────────────────────
 
 def ask_agent(
     message: str,
+    profile: dict,
     thread_id: str | None = None,
-) -> tuple[str, list[dict] | None, str | None]:
-    """Send a message to finpath_agent and return (reply_text, scenarios, thread_id).
+) -> dict:
+    """Send a message to finpath_agent and return a result dict.
 
     Args:
-        message: The user's question, already enriched with profile context.
-        thread_id: Existing conversation thread to continue, or None to start fresh.
+        message:   The user's question in plain text.
+        profile:   Dict with keys: monthly_income, monthly_expenses,
+                   monthly_savings_contribution, current_savings, debt_balance,
+                   annual_debt_rate_pct (percentage, e.g. 7.0),
+                   monthly_debt_payment, goal.
+        thread_id: Pass the thread_id from a previous call to continue the
+                   same conversation thread. None starts a fresh thread.
 
     Returns:
-        reply_text:  The agent's plain-text response.
-        scenarios:   List of scenario result dicts when compare_scenarios was called,
-                     or None if no structured results were found in the reply.
-        thread_id:   The thread ID to pass on the next call for conversation continuity.
+        {
+            "reply":     str   — agent's plain-text response,
+            "tools":     list  — tool names called this turn (may be empty),
+            "thread_id": str   — thread ID; pass on the next call,
+        }
 
     Raises:
-        RuntimeError: Wraps any ADK or network error with a user-friendly message.
-        TimeoutError: If the run does not complete within RUN_TIMEOUT_SECONDS.
+        RuntimeError: wraps any ADK / network error with a user-friendly message.
+        TimeoutError: if the run doesn't complete within RUN_TIMEOUT_SECONDS.
     """
+    full_message = _build_message(message, profile)
+
     try:
         run_client, threads_client = _make_clients()
         agent_id = get_agent_id_by_name(AGENT_NAME)
 
-        # Create the run (POST /runs)
         run_response = run_client.create_run(
-            message=message,
+            message=full_message,
             agent_id=agent_id,
-            thread_id=thread_id,
+            thread_id=thread_id,        # None → new thread; existing → reuse
         )
         new_thread_id: str = run_response["thread_id"]
-        run_id: str = run_response["run_id"]
+        run_id: str        = run_response["run_id"]
 
-        # Poll until completed / failed
-        max_retries = RUN_TIMEOUT_SECONDS // 2  # poll every 2 s
+        print(f"[FinPath] thread_id={new_thread_id}  run_id={run_id}")
+
+        max_retries = RUN_TIMEOUT_SECONDS // 2
         status = run_client.wait_for_run_completion(run_id, max_retries=max_retries)
 
         if status.get("status") == "failed":
-            err = status.get("error", "Unknown error from agent")
-            raise RuntimeError(err)
+            raise RuntimeError(status.get("error", "Agent run failed."))
 
-        # Fetch messages and find the latest assistant reply
         msgs_response = threads_client.get_thread_messages(new_thread_id)
         if isinstance(msgs_response, list):
-            messages = msgs_response
+            all_msgs = msgs_response
         elif isinstance(msgs_response, dict) and "data" in msgs_response:
-            messages = msgs_response["data"]
+            all_msgs = msgs_response["data"]
         else:
-            messages = []
+            all_msgs = []
 
         reply_text = ""
-        for msg in reversed(messages):
+        for msg in reversed(all_msgs):
             if isinstance(msg, dict) and msg.get("role") == "assistant":
                 reply_text = _extract_text(msg.get("content", ""))
                 break
 
-        if not reply_text:
-            reply_text = "No response received from agent."
+        tools = _extract_tools(all_msgs)
 
-        scenarios = _extract_scenarios(reply_text)
-        return reply_text, scenarios, new_thread_id
+        print(f"[FinPath] tools called: {tools or '(none)'}")
+
+        return {
+            "reply":     reply_text or "No response received from agent.",
+            "tools":     tools,
+            "thread_id": new_thread_id,
+        }
 
     except (RuntimeError, TimeoutError):
         raise
     except Exception as exc:
         logger.debug("ADK call failed", exc_info=True)
         raise RuntimeError(
-            f"Could not reach FinPath AI. "
-            f"Make sure your Orchestrate environment is active "
-            f"(run `orchestrate env activate finpath`). Detail: {exc}"
+            "Could not reach FinPath AI. "
+            "Make sure your Orchestrate environment is active "
+            f"(`orchestrate env activate finpath`). Detail: {exc}"
         ) from exc

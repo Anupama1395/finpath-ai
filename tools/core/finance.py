@@ -661,3 +661,198 @@ def emergency_fund_check(
         "gap_to_3_months": gap,
         "summary": summary,
     }
+
+
+# ── Financial health check ─────────────────────────────────────────────────────
+
+
+def financial_health_check(
+    income: float,
+    expenses: float,
+    monthly_savings_contribution: float,
+    current_savings: float,
+    debt_balance: float,
+    annual_debt_rate: float,
+    monthly_debt_payment: float,
+    assumed_invest_rate: float = 0.05,
+) -> dict:
+    """Compute an overall financial health score (0–100) with a sub-score breakdown.
+
+    Sub-scores (each 0–25, summed to 0–100):
+
+    1. Cash-flow score (0–25):
+       - cash_flow = income - expenses - monthly_debt_payment - monthly_savings_contribution
+       - cash_flow >= 0                   → 25
+       - cash_flow >= -income * 0.05      → 15  (mild deficit, < 5% of income)
+       - cash_flow < -income * 0.05       → 0   (significant deficit)
+
+    2. Emergency-fund score (0–25):
+       - months = current_savings / expenses  (0 when expenses == 0)
+       - months >= 6                          → 25
+       - months >= 3                          → 20
+       - months >= 1                          → 10
+       - months < 1                           → 0
+
+    3. Debt-burden score (0–25):
+       - dti = monthly_debt_payment / income  (0 when income == 0)
+       - dti == 0                             → 25
+       - dti <= 0.15                          → 22
+       - dti <= 0.28                          → 15
+       - dti <= 0.36                          → 8
+       - dti > 0.36                           → 0
+
+    4. Savings-rate score (0–25):
+       - rate = monthly_savings_contribution / income  (0 when income == 0)
+       - rate >= 0.20                         → 25
+       - rate >= 0.10                         → 18
+       - rate >= 0.05                         → 10
+       - rate > 0                             → 5
+       - rate == 0                            → 0
+
+    Priority rules (deterministic, applied in order, first match wins):
+      1. cash_flow < 0                       → "Cut expenses or raise income first"
+      2. ef_months < 1                       → "Build a 1-month starter emergency fund"
+      3. annual_debt_rate > assumed_invest_rate → "Put extra cash toward high-interest debt"
+      4. ef_months < 3                       → "Grow emergency fund to 3 months"
+      5. (default)                           → "Start investing the surplus"
+
+    Args:
+        income: Monthly take-home income (> 0).
+        expenses: Monthly essential living expenses (>= 0).
+        monthly_savings_contribution: Current monthly savings/investment amount (>= 0).
+        current_savings: Current liquid savings balance (>= 0).
+        debt_balance: Outstanding debt balance (>= 0).
+        annual_debt_rate: Annual interest rate on debt as a decimal (>= 0, e.g. 0.07).
+        monthly_debt_payment: Monthly debt payment (>= 0).
+        assumed_invest_rate: Expected annual investment return as decimal (>= 0, default 0.05).
+
+    Returns:
+        Dict with keys:
+            score (int):                    Overall score 0–100.
+            cash_flow_score (int):          Sub-score 0–25.
+            emergency_fund_score (int):     Sub-score 0–25.
+            debt_burden_score (int):        Sub-score 0–25.
+            savings_rate_score (int):       Sub-score 0–25.
+            cash_flow (float):              Monthly surplus/deficit.
+            emergency_fund_months (float):  Months of expenses covered.
+            debt_to_income_ratio (float):   Monthly debt payment / income.
+            savings_rate (float):           Monthly savings / income.
+            priorities (list[str]):         Top priorities in order (up to 3).
+            summary (str):                  Plain-language one-liner for the agent.
+
+    Raises:
+        ValueError: For clearly invalid inputs.
+    """
+    if income <= 0:
+        raise ValueError(f"income must be > 0, got {income}")
+    for name, val in [
+        ("expenses", expenses),
+        ("monthly_savings_contribution", monthly_savings_contribution),
+        ("current_savings", current_savings),
+        ("debt_balance", debt_balance),
+        ("annual_debt_rate", annual_debt_rate),
+        ("monthly_debt_payment", monthly_debt_payment),
+        ("assumed_invest_rate", assumed_invest_rate),
+    ]:
+        if val < 0:
+            raise ValueError(f"{name} must be >= 0, got {val}")
+
+    # ── Derived metrics ────────────────────────────────────────────────────────
+    cash_flow = round(
+        income - expenses - monthly_debt_payment - monthly_savings_contribution, 2
+    )
+    ef_months = round(current_savings / expenses, 2) if expenses > 0 else 0.0
+    dti       = round(monthly_debt_payment / income, 4)
+    srate     = round(monthly_savings_contribution / income, 4)
+
+    # ── Sub-scores ─────────────────────────────────────────────────────────────
+    # 1. Cash-flow score
+    if cash_flow >= 0:
+        cf_score = 25
+    elif cash_flow >= -income * 0.05:
+        cf_score = 15
+    else:
+        cf_score = 0
+
+    # 2. Emergency-fund score
+    if ef_months >= 6:
+        ef_score = 25
+    elif ef_months >= 3:
+        ef_score = 20
+    elif ef_months >= 1:
+        ef_score = 10
+    else:
+        ef_score = 0
+
+    # 3. Debt-burden score
+    if dti == 0:
+        db_score = 25
+    elif dti <= 0.15:
+        db_score = 22
+    elif dti <= 0.28:
+        db_score = 15
+    elif dti <= 0.36:
+        db_score = 8
+    else:
+        db_score = 0
+
+    # 4. Savings-rate score
+    if srate >= 0.20:
+        sr_score = 25
+    elif srate >= 0.10:
+        sr_score = 18
+    elif srate >= 0.05:
+        sr_score = 10
+    elif srate > 0:
+        sr_score = 5
+    else:
+        sr_score = 0
+
+    score = cf_score + ef_score + db_score + sr_score
+
+    # ── Priorities (first-match, up to 3) ─────────────────────────────────────
+    all_priorities = []
+    if cash_flow < 0:
+        all_priorities.append("Cut expenses or raise income first")
+    if ef_months < 1:
+        all_priorities.append("Build a 1-month starter emergency fund")
+    if annual_debt_rate > assumed_invest_rate:
+        all_priorities.append("Put extra cash toward high-interest debt")
+    if ef_months < 3:
+        all_priorities.append("Grow emergency fund to 3 months")
+    if not all_priorities:
+        all_priorities.append("Start investing the surplus")
+    priorities = all_priorities[:3]
+
+    # ── Summary ────────────────────────────────────────────────────────────────
+    if score >= 75:
+        health_label = "strong"
+    elif score >= 50:
+        health_label = "moderate"
+    elif score >= 25:
+        health_label = "needs attention"
+    else:
+        health_label = "critical"
+
+    summary = (
+        f"Financial health score: {score}/100 ({health_label}). "
+        f"Cash flow: ${cash_flow:,.2f}/mo | "
+        f"Emergency fund: {ef_months:.1f} months | "
+        f"Debt-to-income: {dti*100:.1f}% | "
+        f"Savings rate: {srate*100:.1f}%. "
+        f"Top priority: {priorities[0]}."
+    )
+
+    return {
+        "score":                  score,
+        "cash_flow_score":        cf_score,
+        "emergency_fund_score":   ef_score,
+        "debt_burden_score":      db_score,
+        "savings_rate_score":     sr_score,
+        "cash_flow":              cash_flow,
+        "emergency_fund_months":  ef_months,
+        "debt_to_income_ratio":   dti,
+        "savings_rate":           srate,
+        "priorities":             priorities,
+        "summary":                summary,
+    }
