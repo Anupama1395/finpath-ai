@@ -51,25 +51,30 @@ def _build_message(message: str, profile: dict) -> str:
 
     The debt rate is supplied in both percentage and decimal so the agent
     can pass the correct decimal value to tools without conversion.
+    Tools expect the decimal form (e.g. 0.07 for 7%).
     """
     rate_pct     = profile.get("annual_debt_rate_pct", 0.0)   # e.g. 7.0
     rate_decimal = rate_pct / 100                              # e.g. 0.07
 
     block = (
-        "Current profile: "
+        f"User profile: "
         f"monthly_income=${profile.get('monthly_income', 0):,}; "
         f"monthly_expenses=${profile.get('monthly_expenses', 0):,}; "
         f"monthly_savings_contribution=${profile.get('monthly_savings_contribution', 0):,}; "
         f"current_savings=${profile.get('current_savings', 0):,}; "
         f"debt_balance=${profile.get('debt_balance', 0):,}; "
-        f"annual_debt_rate={rate_pct:.2f}% ({rate_decimal:.4f}); "
+        f"annual_debt_rate={rate_pct:.2f}% ({rate_decimal:.4f}) — "
+        f"pass {rate_decimal:.4f} to tools that take a decimal rate; "
         f"monthly_debt_payment=${profile.get('monthly_debt_payment', 0):,}; "
         f"goal={profile.get('goal', 'not specified')}.\n"
         f"Question: {message}"
     )
 
-    # Print to terminal for verification — never prints tokens or API keys.
-    print("\n[FinPath → agent]\n" + block + "\n")
+    # Print full message to terminal for verification — never prints tokens or keys.
+    print("\n" + "="*60)
+    print("[FinPath → agent message]")
+    print(block)
+    print("="*60 + "\n")
 
     return block
 

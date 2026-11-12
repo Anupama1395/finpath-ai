@@ -4,9 +4,9 @@ app/main.py
 FinPath AI — Streamlit frontend (3-step wizard + chat).
 
 Steps:
-  1  Profile   — pick a sample profile or enter manually
-  2  Question  — type a goal / pick a suggestion chip
-  3  Results   — multi-turn chat with tool trace per reply
+  1  Profile   — pick a sample profile or enter manually; live health card
+  2  Question  — suggestion chips + free-form textarea
+  3  Results   — multi-turn chat with tool-trace chips per reply
 
 Start with:
     streamlit run app/main.py
@@ -22,7 +22,6 @@ from pathlib import Path
 import streamlit as st
 
 # ── Local import for inline health card (no agent call needed) ────────────────
-# Inserted into sys.path at runtime, so guard against import errors at startup.
 try:
     _tools_path = str(Path(__file__).parent.parent)
     if _tools_path not in sys.path:
@@ -32,7 +31,7 @@ try:
 except Exception:
     _HEALTH_AVAILABLE = False
 
-# ── sys.path ──────────────────────────────────────────────────────────────────
+# ── sys.path for api_client ───────────────────────────────────────────────────
 ROOT    = Path(__file__).parent.parent
 APP_DIR = Path(__file__).parent
 for _p in (str(ROOT), str(APP_DIR)):
@@ -58,194 +57,230 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ── design tokens ── */
 :root{
-  --bg:      #0B0D10;
-  --surface: #171B21;
-  --surface2:#1E232B;
-  --border:  rgba(236,232,225,.10);
-  --text:    #ECE8E1;
-  --muted:   #A6ACB4;
-  --dim:     #7D848D;
-  --orange:  #E8603C;
-  --orange2: #C94E2C;
-  --gold:    #D4A84B;
-  --green:   #5BB87A;
-  --ice:     #7EB8C9;
+  --bg:       #0B0D10;
+  --surface:  #131720;
+  --surface2: #1A1F28;
+  --surface3: #1E2430;
+  --border:   rgba(255,255,255,.07);
+  --border2:  rgba(255,255,255,.12);
+  --text:     #ECE8E1;
+  --muted:    #A6ACB4;
+  --dim:      #6B737D;
+  --orange:   #E8603C;
+  --orange2:  #C94E2C;
+  --orangeA:  rgba(232,96,60,.12);
+  --orangeB:  rgba(232,96,60,.24);
+  --gold:     #D4A84B;
+  --green:    #4EA86B;
+  --greenA:   rgba(78,168,107,.12);
+  --red:      #D95F5F;
+  --blue:     #5B9BD5;
 
   --serif: 'Fraunces', Georgia, serif;
   --sans:  'Inter', -apple-system, system-ui, sans-serif;
   --mono:  'JetBrains Mono', 'Courier New', monospace;
+
+  --radius: 8px;
+  --radius-sm: 4px;
 }
 
-/* ── base ── */
+/* ── reset / base ── */
 html, body, [class*="css"]{
   font-family: var(--sans) !important;
   -webkit-font-smoothing: antialiased;
 }
-.stApp{
-  background: var(--bg) !important;
-  color: var(--text) !important;
-}
-header[data-testid="stHeader"],
-footer,
-#MainMenu{ display:none !important; }
+.stApp{ background: var(--bg) !important; color: var(--text) !important; }
+header[data-testid="stHeader"], footer, #MainMenu{ display:none !important; }
 
-/* content column */
 .block-container{
-  max-width: 880px !important;
-  padding: 2rem 1.2rem 3rem !important;
+  max-width: 860px !important;
+  padding: 2.2rem 1.4rem 4rem !important;
 }
 
-/* ── ALL inputs: dark bg, light text ── */
+/* ── scrollbar ── */
+::-webkit-scrollbar{ width:5px; height:5px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.12); border-radius:3px; }
+
+/* ── typography helpers ── */
+.label-micro{
+  font-family: var(--mono) !important;
+  font-size: .58rem !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+  color: var(--dim) !important;
+}
+
+/* ── ALL inputs: dark surface ── */
 [data-baseweb="base-input"],
 [data-baseweb="input"],
 [data-baseweb="textarea"]{
-  background: var(--surface) !important;
+  background: var(--surface2) !important;
   border-color: var(--border) !important;
+  border-radius: var(--radius-sm) !important;
 }
 [data-baseweb="base-input"] input,
 [data-baseweb="input"] input,
-[data-baseweb="textarea"] textarea,
-textarea{
-  background: var(--surface) !important;
+[data-baseweb="textarea"] textarea, textarea{
+  background: var(--surface2) !important;
   color: var(--text) !important;
   font-family: var(--mono) !important;
+  font-size: .82rem !important;
   caret-color: var(--orange) !important;
+}
+[data-baseweb="base-input"]:focus-within,
+[data-baseweb="input"]:focus-within,
+[data-baseweb="textarea"]:focus-within{
+  border-color: rgba(232,96,60,.45) !important;
+  box-shadow: 0 0 0 2px rgba(232,96,60,.12) !important;
 }
 input::placeholder, textarea::placeholder{
   color: var(--dim) !important;
   opacity: 1 !important;
 }
-/* stepper arrows on number inputs */
+/* stepper buttons on number inputs */
 [data-baseweb="base-input"] button{
-  background: var(--surface) !important;
+  background: var(--surface2) !important;
   color: var(--muted) !important;
   border-color: var(--border) !important;
-  letter-spacing: normal !important;
-  text-transform: none !important;
-  font-size: .8rem !important;
-  padding: .15rem .5rem !important;
 }
 
 /* ── labels ── */
-label, .stSlider label, .stNumberInput label,
-.stTextInput label, .stTextArea label,
-.stSelectbox label{
+label, .stNumberInput label, .stTextInput label,
+.stTextArea label, .stSelectbox label{
   font-family: var(--mono) !important;
-  font-size: .65rem !important;
+  font-size: .62rem !important;
   letter-spacing: .07em !important;
   text-transform: uppercase !important;
   color: var(--muted) !important;
+  margin-bottom: .2rem !important;
 }
 
-/* ── Streamlit buttons: dark base ── */
+/* ── buttons ── */
 .stButton button{
-  background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
+  background: var(--surface2) !important;
+  border: 1px solid var(--border2) !important;
   color: var(--text) !important;
   font-family: var(--mono) !important;
-  font-size: .68rem !important;
+  font-size: .66rem !important;
   letter-spacing: .07em !important;
   text-transform: uppercase !important;
-  border-radius: 4px !important;
-  padding: .45rem 1.1rem !important;
-  transition: background .15s, border-color .15s !important;
+  border-radius: var(--radius-sm) !important;
+  padding: .5rem 1.1rem !important;
+  transition: all .15s !important;
 }
 .stButton button:hover{
-  background: var(--surface2) !important;
-  border-color: var(--muted) !important;
-  color: var(--text) !important;
+  background: var(--surface3) !important;
+  border-color: rgba(255,255,255,.22) !important;
 }
-/* primary — orange */
-[data-testid="stButton"] button[kind="primary"],
-.btn-primary .stButton button{
+
+/* primary — orange fill */
+.stButton button[kind="primary"]{
   background: var(--orange) !important;
   border-color: var(--orange) !important;
   color: #fff !important;
+  font-weight: 600 !important;
 }
-[data-testid="stButton"] button[kind="primary"]:hover,
-.btn-primary .stButton button:hover{
+.stButton button[kind="primary"]:hover{
   background: var(--orange2) !important;
   border-color: var(--orange2) !important;
 }
-/* selected profile card */
-.profile-selected .stButton button{
-  border-color: var(--orange) !important;
-  background: rgba(232,96,60,.12) !important;
-  color: var(--orange) !important;
+.stButton button[kind="primary"]:disabled{
+  background: rgba(232,96,60,.28) !important;
+  border-color: transparent !important;
+  color: rgba(255,255,255,.35) !important;
+  cursor: not-allowed !important;
 }
-/* link button */
+
+/* tertiary — ghost / link */
 .stButton button[kind="tertiary"]{
   background: transparent !important;
   border-color: transparent !important;
   color: var(--dim) !important;
-  font-size: .65rem !important;
-  text-decoration: underline !important;
-  padding: .2rem .4rem !important;
+  font-size: .62rem !important;
+  padding: .2rem .5rem !important;
 }
-.stButton button[kind="tertiary"]:hover{
-  color: var(--muted) !important;
+.stButton button[kind="tertiary"]:hover{ color: var(--muted) !important; }
+
+/* selected profile chip */
+.profile-selected .stButton button{
+  border-color: var(--orange) !important;
+  background: var(--orangeA) !important;
+  color: var(--orange) !important;
 }
-/* suggestion chip buttons */
-.suggestion-btn .stButton button{
-  background: var(--surface) !important;
+
+/* suggestion chips */
+.sug-btn .stButton button{
+  background: var(--surface2) !important;
   border: 1px solid var(--border) !important;
   color: var(--muted) !important;
-  font-size: .67rem !important;
-  padding: .4rem .9rem !important;
+  font-size: .65rem !important;
+  padding: .55rem .9rem !important;
   text-align: left !important;
   white-space: normal !important;
   height: auto !important;
-  line-height: 1.4 !important;
+  line-height: 1.45 !important;
+  border-radius: var(--radius-sm) !important;
 }
-.suggestion-btn .stButton button:hover{
-  border-color: var(--orange) !important;
+.sug-btn .stButton button:hover{
+  border-color: var(--orangeB) !important;
   color: var(--text) !important;
-}
-
-/* ── slider ── */
-.stSlider [data-baseweb="slider"] [role="slider"]{
-  background: var(--orange) !important;
-  border-color: var(--orange) !important;
+  background: rgba(232,96,60,.05) !important;
 }
 
 /* ── expander ── */
 .streamlit-expanderHeader{
   font-family: var(--mono) !important;
-  font-size: .65rem !important;
+  font-size: .62rem !important;
   letter-spacing: .07em !important;
   text-transform: uppercase !important;
   color: var(--muted) !important;
+  background: var(--surface) !important;
+  border-radius: var(--radius-sm) !important;
 }
-
-/* ── markdown tables ── */
-.stMarkdown table{
-  width: 100%; border-collapse: collapse; font-size: .85rem; margin: .6rem 0;
+[data-testid="stExpanderDetails"]{
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-top: none !important;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important;
 }
-.stMarkdown th{
-  background: var(--surface); color: var(--muted);
-  font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase;
-  padding: .5rem .8rem; border: 1px solid var(--border);
-}
-.stMarkdown td{ padding: .5rem .8rem; border: 1px solid var(--border); color: var(--text); }
-.stMarkdown tr:nth-child(even) td{ background: rgba(255,255,255,.02); }
-
-/* ── divider ── */
-hr{ border-color: var(--border) !important; margin: 1.4rem 0 !important; }
 
 /* ── chat messages ── */
 [data-testid="stChatMessage"]{
   background: var(--surface) !important;
   border: 1px solid var(--border) !important;
-  border-radius: 6px !important;
-  margin-bottom: .6rem !important;
+  border-radius: var(--radius) !important;
+  padding: 1rem 1.1rem !important;
+  margin-bottom: .7rem !important;
+}
+[data-testid="stChatMessage"] p{ font-size: .92rem !important; line-height: 1.7 !important; }
+
+/* chat input */
+[data-testid="stChatInput"] textarea{
+  background: var(--surface2) !important;
+  border-color: var(--border2) !important;
+  color: var(--text) !important;
+  font-size: .88rem !important;
 }
 
-/* ── chart ── */
+/* ── divider ── */
+hr{ border-color: var(--border) !important; margin: 1.5rem 0 !important; }
+
+/* ── altair / vega ── */
 .vega-embed{ background: transparent !important; }
+.vega-embed .marks path{ stroke-opacity: .9 !important; }
+
+/* ── st.caption override ── */
+.stCaption{
+  font-family: var(--mono) !important;
+  font-size: .62rem !important;
+  color: var(--dim) !important;
+  margin-top: -.15rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -262,11 +297,11 @@ PROFILES = load_profiles()
 
 SUGGESTIONS = [
     "Can I save $200 more each month?",
-    "How long will it take to pay off my debt?",
+    "How long to pay off my debt?",
     "Is my emergency fund healthy?",
-    "Should I pay off debt first or start investing?",
+    "Pay off debt first or start investing?",
     "What if my income dropped by 10%?",
-    "What if my expenses rose by 15%?",
+    "What if expenses rose by 15%?",
 ]
 
 FOLLOWUP_SUGGESTIONS = [
@@ -291,10 +326,9 @@ def _init_state() -> None:
         "debt_rate":       6.0,
         "goal":            "",
         "question":        "",
-        # chat state
-        "messages":        [],   # list of {role, content, tools}
+        "messages":        [],
         "thread_id":       None,
-        "pending_send":    None, # set to trigger an agent call on next rerun
+        "pending_send":    None,
         "error":           None,
     }
     for k, v in defaults.items():
@@ -304,7 +338,6 @@ def _init_state() -> None:
 _init_state()
 S = st.session_state
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -312,10 +345,6 @@ def _go(step: int) -> None:
     S.step = step
     st.rerun()
 
-
-# Widget keys that mirror the session-state fields on Step 1.
-# Deleting them before writing new values forces Streamlit to re-initialise
-# the widgets from the updated value= arguments.
 _INPUT_KEYS = [
     "in_income", "in_expenses", "in_savings", "in_savings_contrib",
     "in_debt_bal", "in_debt_payment", "in_debt_rate", "in_goal",
@@ -325,35 +354,57 @@ def _reset_input_widgets() -> None:
     for k in _INPUT_KEYS:
         st.session_state.pop(k, None)
 
-
 def _load_profile(p: dict) -> None:
-    S.profile         = p
-    S.income          = int(p["monthly_income"])
-    S.expenses        = int(p["monthly_expenses"])
-    S.savings         = int(p["cash_savings"])
-    S.savings_contrib = int(p.get("monthly_savings_contribution", 0))
-    S.debt_bal        = int(p["debt_balance"])
-    S.debt_payment    = int(p.get("monthly_debt_payment", 0))
-    S.debt_rate       = float(p["debt_rate"] * 100)
-    S.goal            = p["savings_goal"]
-    _reset_input_widgets()
+    # Write both the session-state aliases AND the widget keys directly.
+    # Writing the widget key is what actually updates the displayed value —
+    # Streamlit ignores value= on reruns if the key already exists in state.
+    income   = int(p["monthly_income"])
+    expenses = int(p["monthly_expenses"])
+    savings  = int(p["cash_savings"])
+    contrib  = int(p.get("monthly_savings_contribution", 0))
+    debt_bal = int(p["debt_balance"])
+    debt_pmt = int(p.get("monthly_debt_payment", 0))
+    rate     = float(p["debt_rate"] * 100)
+    goal     = p["savings_goal"]
 
+    # Session-state aliases (used by _build_profile_dict and health card)
+    S.profile         = p
+    S.income          = income
+    S.expenses        = expenses
+    S.savings         = savings
+    S.savings_contrib = contrib
+    S.debt_bal        = debt_bal
+    S.debt_payment    = debt_pmt
+    S.debt_rate       = rate
+    S.goal            = goal
+
+    # Widget keys — writing these directly is the only reliable way to
+    # update displayed number_input / text_input values on a rerun.
+    st.session_state["in_income"]         = income
+    st.session_state["in_expenses"]       = expenses
+    st.session_state["in_savings"]        = savings
+    st.session_state["in_savings_contrib"]= contrib
+    st.session_state["in_debt_bal"]       = debt_bal
+    st.session_state["in_debt_payment"]   = debt_pmt
+    st.session_state["in_debt_rate"]      = rate
+    st.session_state["in_goal"]           = goal
 
 def _clear_profile() -> None:
-    S.profile         = None
-    S.income          = 5000
-    S.expenses        = 3000
-    S.savings         = 6000
-    S.savings_contrib = 200
-    S.debt_bal        = 10000
-    S.debt_payment    = 300
-    S.debt_rate       = 6.0
-    S.goal            = ""
-    _reset_input_widgets()
-
+    S.profile = None
+    S.income = 5000; S.expenses = 3000; S.savings = 6000
+    S.savings_contrib = 200; S.debt_bal = 10000
+    S.debt_payment = 300; S.debt_rate = 6.0; S.goal = ""
+    # Write widget keys directly so displayed values reset immediately
+    st.session_state["in_income"]          = 5000
+    st.session_state["in_expenses"]        = 3000
+    st.session_state["in_savings"]         = 6000
+    st.session_state["in_savings_contrib"] = 200
+    st.session_state["in_debt_bal"]        = 10000
+    st.session_state["in_debt_payment"]    = 300
+    st.session_state["in_debt_rate"]       = 6.0
+    st.session_state["in_goal"]            = ""
 
 def _build_profile_dict() -> dict:
-    """Build the profile dict that api_client.ask_agent expects."""
     return {
         "monthly_income":               S.income,
         "monthly_expenses":             S.expenses,
@@ -361,107 +412,101 @@ def _build_profile_dict() -> dict:
         "monthly_debt_payment":         S.debt_payment,
         "current_savings":              S.savings,
         "debt_balance":                 S.debt_bal,
-        "annual_debt_rate_pct":         S.debt_rate,   # percentage, e.g. 7.0
+        "annual_debt_rate_pct":         S.debt_rate,
         "goal":                         S.goal or "not specified",
     }
 
 
-def _pick_highlighted(scenarios: list[dict]) -> int:
-    feasible = [(i, s) for i, s in enumerate(scenarios) if s.get("feasible")]
-    if not feasible:
-        return 0
-    best_i, _ = max(feasible, key=lambda x: x[1].get("savings_contribution", 0))
-    return best_i
-
-
 # ─────────────────────────────────────────────────────────────────────────────
-# SHARED WIDGETS
+# SHARED CHROME
 # ─────────────────────────────────────────────────────────────────────────────
-def _render_wordmark() -> None:
+def _wordmark() -> None:
     st.markdown(
-        '<p style="font:italic 400 clamp(1.9rem,5vw,3rem)/.9 var(--serif);'
-        'text-transform:uppercase;letter-spacing:-.02em;color:var(--text);margin:0 0 .15rem">'
-        'Fin<span style="color:var(--orange)">Path</span> AI</p>'
-        '<p style="font-family:var(--mono);font-size:.62rem;letter-spacing:.12em;'
-        'text-transform:uppercase;color:var(--dim);margin-bottom:1.8rem">'
-        'IBM SkillsBuild · Banking &amp; Financial Services</p>',
-        unsafe_allow_html=True,
-    )
-
-
-def _render_step_indicator(current: int) -> None:
-    labels = ["Profile", "Question", "Results"]
-    parts: list[str] = []
-    for i, label in enumerate(labels, 1):
-        if i < current:
-            cls, dot = "done", "✓"
-        elif i == current:
-            cls, dot = "active", str(i)
-        else:
-            cls, dot = "inactive", str(i)
-
-        done_style   = "background:var(--orange);border-color:var(--orange);color:#fff;"
-        active_style = "border-color:var(--text);color:var(--text);"
-        off_style    = "border-color:var(--border);color:var(--dim);"
-        dot_style    = done_style if cls == "done" else (active_style if cls == "active" else off_style)
-        label_color  = "var(--text)" if cls == "active" else ("var(--muted)" if cls == "done" else "var(--dim)")
-
-        parts.append(
-            f'<div style="display:flex;align-items:center;gap:.4rem;'
-            f'font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;">'
-            f'<div style="width:22px;height:22px;border-radius:50%;border:1px solid;'
-            f'display:flex;align-items:center;justify-content:center;font-size:.68rem;flex-shrink:0;{dot_style}">'
-            f'{dot}</div>'
-            f'<span style="color:{label_color};white-space:nowrap">{label}</span>'
-            f'</div>'
-        )
-        if i < 3:
-            parts.append(
-                '<div style="flex:1;height:1px;background:var(--border);'
-                'margin:0 .4rem;min-width:12px"></div>'
-            )
-
-    st.markdown(
-        f'<div style="display:flex;align-items:center;margin-bottom:1.8rem">'
-        f'{"".join(parts)}</div>',
-        unsafe_allow_html=True,
-    )
-
-
-def _render_disclaimer() -> None:
-    st.markdown(
-        '<div style="margin-top:1.8rem;padding:.65rem .9rem;'
-        'border-left:3px solid var(--orange);'
-        'background:rgba(232,96,60,.06);border-radius:0 4px 4px 0;">'
-        '<span style="font-family:var(--mono);font-size:.65rem;letter-spacing:.04em;'
-        'color:var(--muted);">Educational tool · Not financial advice · '
-        'All projections are illustrative and based on the figures you supply.</span>'
+        '<div style="margin-bottom:1.6rem">'
+        '<p style="font:italic 400 2.6rem/.85 var(--serif);'
+        'text-transform:uppercase;letter-spacing:-.025em;'
+        'color:var(--text);margin:0">'
+        'Fin<span style="color:var(--orange)">Path</span></p>'
+        '<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;'
+        'text-transform:uppercase;color:var(--dim);margin:.2rem 0 0">'
+        'IBM SkillsBuild · Banking &amp; Financial Services</p>'
         '</div>',
         unsafe_allow_html=True,
     )
 
+def _stepper(current: int) -> None:
+    labels = ["Profile", "Question", "Results"]
+    parts: list[str] = []
+    for i, label in enumerate(labels, 1):
+        if i < current:
+            dot_s = "background:var(--orange);border-color:var(--orange);color:#fff"
+            lbl_c = "var(--muted)"; dot_t = "✓"
+        elif i == current:
+            dot_s = "border-color:var(--text);color:var(--text)"; lbl_c = "var(--text)"; dot_t = str(i)
+        else:
+            dot_s = "border-color:var(--border2);color:var(--dim)"; lbl_c = "var(--dim)"; dot_t = str(i)
 
-def _render_tool_chips(tool_steps: list[str]) -> None:
-    if not tool_steps:
+        parts.append(
+            f'<div style="display:flex;align-items:center;gap:.4rem;'
+            f'font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase">'
+            f'<div style="width:20px;height:20px;border-radius:50%;border:1.5px solid;'
+            f'display:flex;align-items:center;justify-content:center;'
+            f'font-size:.62rem;flex-shrink:0;{dot_s}">{dot_t}</div>'
+            f'<span style="color:{lbl_c};white-space:nowrap">{label}</span></div>'
+        )
+        if i < 3:
+            parts.append(
+                f'<div style="flex:1;height:1px;background:var(--border);'
+                f'margin:0 .5rem;min-width:10px;opacity:{"1" if i < current else ".4"}"></div>'
+            )
+    st.markdown(
+        f'<div style="display:flex;align-items:center;margin-bottom:1.6rem">'
+        f'{"".join(parts)}</div>',
+        unsafe_allow_html=True,
+    )
+
+def _section_label(text: str, margin_top: str = "1.1rem") -> None:
+    st.markdown(
+        f'<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;'
+        f'text-transform:uppercase;color:var(--dim);margin:{margin_top} 0 .5rem">'
+        f'{text}</p>',
+        unsafe_allow_html=True,
+    )
+
+def _disclaimer() -> None:
+    st.markdown(
+        '<div style="margin-top:2rem;padding:.6rem 1rem;'
+        'border-left:3px solid var(--orange);'
+        'background:rgba(232,96,60,.05);border-radius:0 6px 6px 0;">'
+        '<span style="font-family:var(--mono);font-size:.63rem;'
+        'color:var(--muted);letter-spacing:.03em">'
+        'Educational tool · Not financial advice · '
+        'All projections are illustrative only.</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+def _tool_chips(tools: list[str]) -> None:
+    if not tools:
         return
     chips = "".join(
-        f'<span style="display:inline-block;padding:.22rem .65rem;margin:.2rem .25rem .2rem 0;'
-        f'background:rgba(232,96,60,.10);border:1px solid rgba(232,96,60,.28);border-radius:3px;'
-        f'font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;color:var(--orange)">'
-        f'{name}()</span>'
-        for name in tool_steps
+        f'<span style="display:inline-flex;align-items:center;gap:.3rem;'
+        f'padding:.18rem .55rem;margin:.2rem .2rem 0 0;'
+        f'background:var(--orangeA);border:1px solid var(--orangeB);'
+        f'border-radius:3px;font-family:var(--mono);font-size:.6rem;color:var(--orange)">'
+        f'<span style="font-size:.65rem;opacity:.7">⚙</span>{n}</span>'
+        for n in tools
     )
     st.markdown(
-        f'<div style="margin:.4rem 0 .2rem">'
-        f'<span style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;'
-        f'text-transform:uppercase;color:var(--dim);margin-right:.5rem">Tools:</span>'
+        f'<div style="margin:.5rem 0 .15rem">'
+        f'<span style="font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;'
+        f'text-transform:uppercase;color:var(--dim);margin-right:.4rem">Tools used</span>'
         f'{chips}</div>',
         unsafe_allow_html=True,
     )
 
-
-def _render_assumptions_expander() -> None:
-    with st.expander("Assumptions used"):
+def _assumptions_expander() -> None:
+    with st.expander("📋 Assumptions used"):
         rows = [
             ("Monthly income",        f"${S.income:,}"),
             ("Monthly expenses",      f"${S.expenses:,}"),
@@ -472,83 +517,66 @@ def _render_assumptions_expander() -> None:
             ("Debt interest rate",    f"{S.debt_rate:.1f}% p.a."),
             ("Growth rate (default)", "5% p.a."),
             ("Projection horizon",    "12 months"),
-            ("Emergency fund target", "3–6 months of expenses (guideline)"),
+            ("EF target (guideline)", "3–6 months of expenses"),
         ]
-        row_html = "".join(
-            f'<div style="display:flex;justify-content:space-between;padding:.35rem 0;'
-            f'border-bottom:1px solid var(--border);">'
-            f'<span style="color:var(--muted);font-family:var(--mono);font-size:.65rem;'
-            f'letter-spacing:.04em">{label}</span>'
-            f'<span style="color:var(--text);font-family:var(--mono);font-size:.65rem">{value}</span>'
+        html = "".join(
+            f'<div style="display:flex;justify-content:space-between;'
+            f'padding:.32rem 0;border-bottom:1px solid var(--border)">'
+            f'<span style="font-family:var(--mono);font-size:.63rem;color:var(--muted)">{l}</span>'
+            f'<span style="font-family:var(--mono);font-size:.63rem;color:var(--text)">{v}</span>'
             f'</div>'
-            for label, value in rows
+            for l, v in rows
         )
-        st.markdown(row_html, unsafe_allow_html=True)
+        st.markdown(html, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HEALTH CARD (Step 1, computed locally — no agent call)
+# HEALTH CARD  (Step 1, local compute — no agent call)
 # ─────────────────────────────────────────────────────────────────────────────
-
-def _render_health_card() -> None:
-    """Render a financial health score card using local math (no agent call)."""
+def _health_card() -> None:
     try:
         h = _fhc(
-            income=S.income,
-            expenses=S.expenses,
+            income=S.income, expenses=S.expenses,
             monthly_savings_contribution=S.savings_contrib,
-            current_savings=S.savings,
-            debt_balance=S.debt_bal,
+            current_savings=S.savings, debt_balance=S.debt_bal,
             annual_debt_rate=S.debt_rate / 100,
             monthly_debt_payment=S.debt_payment,
         )
     except Exception:
-        return  # silently skip if inputs are invalid mid-edit
+        return
 
-    score  = h["score"]
-    # Colour gradient: red→amber→green
-    if score >= 75:
-        ring_color = "#5BB87A"  # green
-    elif score >= 50:
-        ring_color = "#D4A84B"  # amber/gold
-    elif score >= 25:
-        ring_color = "#E8603C"  # orange
-    else:
-        ring_color = "#C94E2C"  # red
+    score = h["score"]
+    color = "#4EA86B" if score >= 75 else ("#D4A84B" if score >= 50 else ("#E8603C" if score >= 25 else "#D95F5F"))
+    label = "Strong" if score >= 75 else ("Moderate" if score >= 50 else ("Needs attention" if score >= 25 else "Critical"))
 
-    # SVG score ring
-    radius       = 28
-    circumference = 2 * 3.14159 * radius
-    dash_offset  = circumference * (1 - score / 100)
+    # SVG ring
+    r = 32; circ = 2 * 3.14159 * r
+    offset = circ * (1 - score / 100)
+    ring = (
+        f'<svg width="88" height="88" viewBox="0 0 88 88">'
+        f'<circle cx="44" cy="44" r="{r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="8"/>'
+        f'<circle cx="44" cy="44" r="{r}" fill="none" stroke="{color}" stroke-width="8"'
+        f' stroke-dasharray="{circ:.1f}" stroke-dashoffset="{offset:.1f}"'
+        f' stroke-linecap="round" transform="rotate(-90 44 44)"/>'
+        f'<text x="44" y="48" text-anchor="middle" font-family="JetBrains Mono,monospace"'
+        f' font-size="18" font-weight="600" fill="{color}">{score}</text>'
+        f'</svg>'
+    )
 
-    ring_svg = f"""
-    <svg width="80" height="80" viewBox="0 0 80 80">
-      <circle cx="40" cy="40" r="{radius}" fill="none"
-        stroke="rgba(236,232,225,.08)" stroke-width="7"/>
-      <circle cx="40" cy="40" r="{radius}" fill="none"
-        stroke="{ring_color}" stroke-width="7"
-        stroke-dasharray="{circumference:.1f}"
-        stroke-dashoffset="{dash_offset:.1f}"
-        stroke-linecap="round"
-        transform="rotate(-90 40 40)"/>
-      <text x="40" y="44" text-anchor="middle"
-        font-family="JetBrains Mono,monospace"
-        font-size="16" font-weight="600" fill="{ring_color}">{score}</text>
-    </svg>"""
-
-    # Sub-score bars
-    def _bar(label: str, value: int, max_val: int = 25) -> str:
-        pct = value / max_val * 100
-        bar_color = "#5BB87A" if pct >= 80 else ("#D4A84B" if pct >= 40 else "#E8603C")
+    # sub-score bars
+    def _bar(lbl: str, val: int) -> str:
+        pct = val / 25 * 100
+        c = "#4EA86B" if pct >= 80 else ("#D4A84B" if pct >= 44 else "#E8603C")
         return (
-            f'<div style="margin-bottom:.55rem">'
-            f'<div style="display:flex;justify-content:space-between;'
-            f'font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;'
-            f'text-transform:uppercase;color:var(--muted);margin-bottom:.2rem">'
-            f'<span>{label}</span><span style="color:var(--text)">{value}/{max_val}</span></div>'
-            f'<div style="height:5px;background:rgba(236,232,225,.08);border-radius:3px">'
-            f'<div style="width:{pct:.0f}%;height:100%;background:{bar_color};border-radius:3px"></div>'
-            f'</div></div>'
+            f'<div style="margin-bottom:.5rem">'
+            f'<div style="display:flex;justify-content:space-between;margin-bottom:.22rem">'
+            f'<span style="font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;'
+            f'text-transform:uppercase;color:var(--muted)">{lbl}</span>'
+            f'<span style="font-family:var(--mono);font-size:.6rem;color:{c}">{val}/25</span>'
+            f'</div>'
+            f'<div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px">'
+            f'<div style="width:{pct:.0f}%;height:100%;background:{c};border-radius:2px;'
+            f'transition:width .4s ease"></div></div></div>'
         )
 
     bars = (
@@ -558,37 +586,76 @@ def _render_health_card() -> None:
         + _bar("Savings rate",   h["savings_rate_score"])
     )
 
-    # Priority chips
-    priority_chips = "".join(
-        f'<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .7rem;'
-        f'margin-bottom:.3rem;background:var(--surface2);border-radius:4px;'
-        f'font-family:var(--mono);font-size:.63rem;color:var(--muted)">'
-        f'<span style="color:var(--orange);font-size:.75rem">›</span>'
-        f'<span>{p}</span></div>'
+    # key stats row
+    cf    = h["cash_flow"]
+    cf_c  = "#4EA86B" if cf >= 0 else "#D95F5F"
+    ef    = h["emergency_fund_months"]
+    ef_c  = "#4EA86B" if ef >= 3 else ("#D4A84B" if ef >= 1 else "#D95F5F")
+    dti   = h["debt_to_income_ratio"] * 100
+    dti_c = "#4EA86B" if dti <= 15 else ("#D4A84B" if dti <= 28 else "#D95F5F")
+    sr    = h["savings_rate"] * 100
+    sr_c  = "#4EA86B" if sr >= 10 else ("#D4A84B" if sr >= 5 else "#D95F5F")
+
+    def _stat(label: str, value: str, color: str) -> str:
+        return (
+            f'<div style="flex:1;min-width:0;padding:.55rem .6rem;'
+            f'background:var(--surface2);border-radius:var(--radius-sm);'
+            f'border:1px solid var(--border)">'
+            f'<div style="font-family:var(--mono);font-size:.54rem;letter-spacing:.08em;'
+            f'text-transform:uppercase;color:var(--dim);margin-bottom:.25rem">{label}</div>'
+            f'<div style="font-family:var(--mono);font-size:.9rem;font-weight:600;color:{color}">{value}</div>'
+            f'</div>'
+        )
+
+    stats = (
+        f'<div style="display:flex;gap:.4rem;margin-bottom:.9rem;flex-wrap:wrap">'
+        + _stat("Surplus/mo", f"${cf:+,.0f}", cf_c)
+        + _stat("EF coverage", f"{ef:.1f} mo", ef_c)
+        + _stat("Debt/income", f"{dti:.0f}%", dti_c)
+        + _stat("Saving rate", f"{sr:.0f}%", sr_c)
+        + '</div>'
+    )
+
+    # priority list
+    pri_items = "".join(
+        f'<div style="display:flex;align-items:flex-start;gap:.55rem;'
+        f'padding:.4rem .65rem;margin-bottom:.28rem;'
+        f'background:var(--surface2);border-radius:var(--radius-sm);'
+        f'border:1px solid var(--border)">'
+        f'<span style="color:var(--orange);font-size:.8rem;margin-top:.05rem;flex-shrink:0">›</span>'
+        f'<span style="font-family:var(--mono);font-size:.63rem;color:var(--muted);line-height:1.4">{p}</span>'
+        f'</div>'
         for p in h["priorities"][:3]
     )
 
     st.markdown(
-        f'<div style="margin:1rem 0;padding:1rem 1.1rem;'
-        f'background:var(--surface);border:1px solid var(--border);border-radius:6px">'
+        f'<div style="margin:1.2rem 0 0;padding:1rem 1.1rem 1.1rem;'
+        f'background:var(--surface);border:1px solid var(--border2);'
+        f'border-radius:var(--radius)">'
 
-        # Header
-        f'<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-        f'text-transform:uppercase;color:var(--dim);margin-bottom:.8rem">'
-        f'Your financial health</p>'
-
-        # Score ring + bars side by side
-        f'<div style="display:flex;gap:1.2rem;align-items:flex-start;margin-bottom:.9rem">'
-        f'<div style="flex-shrink:0">{ring_svg}</div>'
-        f'<div style="flex:1;min-width:0">{bars}</div>'
+        # Header row: score label + ring
+        f'<div style="display:flex;align-items:center;justify-content:space-between;'
+        f'margin-bottom:.9rem">'
+        f'<div>'
+        f'<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;'
+        f'text-transform:uppercase;color:var(--dim);margin:0 0 .2rem">Financial health</p>'
+        f'<p style="font:italic 400 1.35rem/1 var(--serif);color:{color};margin:0">{label}</p>'
+        f'</div>'
+        f'<div>{ring}</div>'
         f'</div>'
 
-        # Priorities
-        f'<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-        f'text-transform:uppercase;color:var(--dim);margin:.2rem 0 .4rem">'
-        f'Top priorities</p>'
-        f'{priority_chips}'
-        f'</div>',
+        # 4 stat pills
+        + stats
+
+        # sub-score bars
+        + bars
+
+        # priorities
+        + f'<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;'
+        f'text-transform:uppercase;color:var(--dim);margin:.7rem 0 .4rem">Priorities</p>'
+        + pri_items
+
+        + '</div>',
         unsafe_allow_html=True,
     )
 
@@ -597,95 +664,65 @@ def _render_health_card() -> None:
 # STEP 1 — PROFILE
 # ─────────────────────────────────────────────────────────────────────────────
 def render_step1() -> None:
-    _render_wordmark()
-    _render_step_indicator(1)
+    _wordmark()
+    _stepper(1)
 
     st.markdown(
-        '<h2 style="font:italic 400 1.7rem/1.1 var(--serif);margin:0 0 .25rem">'
+        '<h2 style="font:italic 400 1.65rem/1.1 var(--serif);margin:0 0 .2rem">'
         'Your <span style="color:var(--orange)">profile</span></h2>'
-        '<p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.06em;'
+        '<p style="font-family:var(--mono);font-size:.62rem;letter-spacing:.05em;'
         'text-transform:uppercase;color:var(--muted);margin-bottom:1.4rem">'
-        'Step 1 of 3 · Select a sample or enter your own figures</p>',
+        'Step 1 of 3 · Select a sample or fill in your own numbers</p>',
         unsafe_allow_html=True,
     )
 
-    # ── Profile grid: 3 per row ───────────────────────────────────────────────
-    st.markdown(
-        '<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-        'text-transform:uppercase;color:var(--dim);margin-bottom:.7rem">'
-        'Sample profiles</p>',
-        unsafe_allow_html=True,
-    )
-
+    # ── Sample profiles grid ──────────────────────────────────────────────────
+    _section_label("Sample profiles", margin_top="0")
     rows = [PROFILES[i:i+3] for i in range(0, len(PROFILES), 3)]
     for row in rows:
         cols = st.columns(3)
         for col, p in zip(cols, row):
-            is_selected = S.profile is not None and S.profile["id"] == p["id"]
-            name_part = p["label"].split("—")[0].strip()
-            desc_part = p["label"].split("—")[1].strip() if "—" in p["label"] else ""
+            is_sel = S.profile is not None and S.profile["id"] == p["id"]
+            name   = p["label"].split("—")[0].strip()
+            desc   = p["label"].split("—")[1].strip() if "—" in p["label"] else ""
             with col:
-                if is_selected:
-                    st.markdown('<div class="profile-selected">', unsafe_allow_html=True)
-                # on_click runs before next render so widget keys are cleared first
-                st.button(
-                    name_part,
-                    key=f"chip_{p['id']}",
-                    use_container_width=True,
-                    on_click=_load_profile,
-                    args=(p,),
-                )
-                if desc_part:
-                    st.caption(desc_part)
-                if is_selected:
-                    st.markdown('</div>', unsafe_allow_html=True)
+                wrap = '<div class="profile-selected">' if is_sel else '<div>'
+                st.markdown(wrap, unsafe_allow_html=True)
+                st.button(name, key=f"chip_{p['id']}", use_container_width=True,
+                          on_click=_load_profile, args=(p,))
+                if desc:
+                    st.caption(desc)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div style="margin-top:.5rem;margin-bottom:1rem">', unsafe_allow_html=True)
-    st.button(
-        "Clear and enter my own →",
-        key="chip_manual",
-        type="tertiary",
-        on_click=_clear_profile,
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
+    col_clear, _ = st.columns([1, 3])
+    with col_clear:
+        st.button("↺ Clear", key="chip_manual", type="tertiary", on_click=_clear_profile)
 
     if S.profile:
         st.markdown(
-            f'<p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.05em;'
-            f'color:var(--orange);margin-bottom:.6rem">Loaded: {S.profile["label"]}</p>',
+            f'<p style="font-family:var(--mono);font-size:.62rem;color:var(--orange);'
+            f'margin:.3rem 0 .8rem">✓ {S.profile["label"]}</p>',
             unsafe_allow_html=True,
         )
 
     st.markdown('<hr>', unsafe_allow_html=True)
 
-    # ── Income & expenses ─────────────────────────────────────────────────────
-    st.markdown(
-        '<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-        'text-transform:uppercase;color:var(--dim);margin-bottom:.5rem">'
-        'Income &amp; expenses</p>',
-        unsafe_allow_html=True,
-    )
-    col_a, col_b = st.columns(2)
-    with col_a:
+    # ── Two-column form layout ────────────────────────────────────────────────
+    left_col, right_col = st.columns([1, 1], gap="large")
+
+    with left_col:
+        _section_label("Income & expenses", margin_top="0")
         S.income = st.number_input(
             "Monthly take-home income ($)", min_value=0, step=100,
             value=int(S.income), key="in_income",
         )
-    with col_b:
         S.expenses = st.number_input(
             "Monthly essential expenses ($)", min_value=0, step=100,
             value=int(S.expenses), key="in_expenses",
         )
 
-    # ── Savings & debt ────────────────────────────────────────────────────────
-    st.markdown(
-        '<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-        'text-transform:uppercase;color:var(--dim);margin:.9rem 0 .5rem">'
-        'Savings &amp; debt</p>',
-        unsafe_allow_html=True,
-    )
-    col_c, col_d = st.columns(2)
-    with col_c:
+    with right_col:
+        _section_label("Savings", margin_top="0")
         S.savings = st.number_input(
             "Current cash savings ($)", min_value=0, step=500,
             value=int(S.savings), key="in_savings",
@@ -694,7 +731,11 @@ def render_step1() -> None:
             "Currently saving per month ($)", min_value=0, step=50,
             value=int(S.savings_contrib), key="in_savings_contrib",
         )
-    with col_d:
+
+    left2, right2 = st.columns([1, 1], gap="large")
+
+    with left2:
+        _section_label("Debt", margin_top=".8rem")
         S.debt_bal = st.number_input(
             "Total debt balance ($)", min_value=0, step=1000,
             value=int(S.debt_bal), key="in_debt_bal",
@@ -704,44 +745,34 @@ def render_step1() -> None:
             value=int(S.debt_payment), key="in_debt_payment",
         )
 
-    col_e, _ = st.columns([1, 1])
-    with col_e:
+    with right2:
+        _section_label("Rate & goal", margin_top=".8rem")
         S.debt_rate = st.number_input(
-            "Debt interest rate (% per year)", min_value=0.0, max_value=50.0,
-            step=0.5, value=float(S.debt_rate), key="in_debt_rate",
-            format="%.1f",
+            "Debt interest rate (% p.a.)", min_value=0.0, max_value=50.0,
+            step=0.5, value=float(S.debt_rate), key="in_debt_rate", format="%.1f",
+        )
+        S.goal = st.text_input(
+            "Goal (optional)",
+            value=S.goal,
+            placeholder="e.g. Pay off debt in 3 years",
+            key="in_goal",
         )
 
-    # ── Goal ─────────────────────────────────────────────────────────────────
-    st.markdown(
-        '<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-        'text-transform:uppercase;color:var(--dim);margin:.9rem 0 .5rem">'
-        'Goal (optional)</p>',
-        unsafe_allow_html=True,
-    )
-    S.goal = st.text_input(
-        "What are you working towards?",
-        value=S.goal,
-        placeholder="e.g. Pay off debt in 3 years and build a 6-month emergency fund",
-        key="in_goal",
-    )
-
-    # ── Financial health card (computed locally, no agent call) ───────────────
+    # ── Live health card ──────────────────────────────────────────────────────
     if _HEALTH_AVAILABLE and S.income > 0 and S.expenses > 0:
-        _render_health_card()
+        _health_card()
 
     st.markdown('<hr>', unsafe_allow_html=True)
 
-    _, right = st.columns([3, 1])
-    with right:
+    _, btn_col = st.columns([3, 1])
+    with btn_col:
         st.button(
-            "Next →", key="step1_next", use_container_width=True,
-            type="primary",
+            "Next →", key="step1_next", use_container_width=True, type="primary",
             disabled=(S.income == 0 or S.expenses == 0),
             on_click=lambda: _go(2),
         )
 
-    _render_disclaimer()
+    _disclaimer()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -753,129 +784,107 @@ def _set_question(q: str) -> None:
 
 
 def render_step2() -> None:
-    _render_wordmark()
-    _render_step_indicator(2)
+    _wordmark()
+    _stepper(2)
 
     st.markdown(
-        '<h2 style="font:italic 400 1.7rem/1.1 var(--serif);margin:0 0 .25rem">'
+        '<h2 style="font:italic 400 1.65rem/1.1 var(--serif);margin:0 0 .2rem">'
         'Your <span style="color:var(--orange)">question</span></h2>'
-        '<p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.06em;'
+        '<p style="font-family:var(--mono);font-size:.62rem;letter-spacing:.05em;'
         'text-transform:uppercase;color:var(--muted);margin-bottom:1.2rem">'
         'Step 2 of 3 · Ask about your financial situation</p>',
         unsafe_allow_html=True,
     )
 
-    # Profile summary pills
-    pill      = ('display:inline-block;padding:.22rem .65rem;margin:.15rem .2rem;'
-                 'background:var(--surface);border:1px solid var(--border);border-radius:20px;'
-                 'font-family:var(--mono);font-size:.62rem;color:var(--muted);white-space:nowrap')
-    val_style = 'color:var(--text);font-weight:500'
+    # Profile pills
+    pill = (
+        'display:inline-flex;align-items:center;gap:.3rem;'
+        'padding:.2rem .6rem;margin:.12rem .18rem;'
+        'background:var(--surface2);border:1px solid var(--border);'
+        'border-radius:20px;font-family:var(--mono);font-size:.6rem;'
+        'color:var(--muted);white-space:nowrap'
+    )
+    vs = 'color:var(--text);font-weight:500'
     st.markdown(
-        f'<div style="display:flex;flex-wrap:wrap;gap:.1rem;margin-bottom:1.2rem;">'
-        f'<span style="{pill}">Income <span style="{val_style}">${S.income:,}</span></span>'
-        f'<span style="{pill}">Expenses <span style="{val_style}">${S.expenses:,}</span></span>'
-        f'<span style="{pill}">Savings <span style="{val_style}">${S.savings:,}</span></span>'
-        f'<span style="{pill}">Saving/mo <span style="{val_style}">${S.savings_contrib:,}</span></span>'
-        f'<span style="{pill}">Debt pmt <span style="{val_style}">${S.debt_payment:,}/mo</span></span>'
-        f'<span style="{pill}">Debt <span style="{val_style}">${S.debt_bal:,} @ {S.debt_rate:.1f}%</span></span>'
+        f'<div style="display:flex;flex-wrap:wrap;margin-bottom:1.3rem">'
+        f'<span style="{pill}">Income <b style="{vs}">${S.income:,}</b></span>'
+        f'<span style="{pill}">Expenses <b style="{vs}">${S.expenses:,}</b></span>'
+        f'<span style="{pill}">Savings <b style="{vs}">${S.savings:,}</b></span>'
+        f'<span style="{pill}">Saving/mo <b style="{vs}">${S.savings_contrib:,}</b></span>'
+        f'<span style="{pill}">Debt pmt <b style="{vs}">${S.debt_payment:,}</b></span>'
+        f'<span style="{pill}">Debt <b style="{vs}">${S.debt_bal:,} @ {S.debt_rate:.1f}%</b></span>'
         f'</div>',
         unsafe_allow_html=True,
     )
 
-    # Suggestion chips in 2 columns
-    st.markdown(
-        '<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-        'text-transform:uppercase;color:var(--dim);margin-bottom:.5rem">'
-        'Suggestions</p>',
-        unsafe_allow_html=True,
-    )
-    sc1, sc2 = st.columns(2)
-    for idx, suggestion in enumerate(SUGGESTIONS):
-        col = sc1 if idx % 2 == 0 else sc2
+    # Suggestion chips 2-col
+    _section_label("Quick suggestions", margin_top="0")
+    c1, c2 = st.columns(2, gap="small")
+    for i, s in enumerate(SUGGESTIONS):
+        col = c1 if i % 2 == 0 else c2
         with col:
-            st.markdown('<div class="suggestion-btn">', unsafe_allow_html=True)
-            st.button(
-                suggestion,
-                key=f"sug_{idx}",
-                use_container_width=True,
-                on_click=_set_question,
-                args=(suggestion,),
-            )
+            st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
+            st.button(s, key=f"sug_{i}", use_container_width=True,
+                      on_click=_set_question, args=(s,))
             st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div style="margin-top:.9rem"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-top:1rem"></div>', unsafe_allow_html=True)
 
-    # Question textarea — key owns the value; init guard seeds it on first visit
+    # Question input
     if "in_question" not in st.session_state:
         st.session_state["in_question"] = st.session_state.get("question", "")
     S.question = st.text_area(
         "Or type your own question",
-        height=96,
-        placeholder="e.g. Should I put extra cash towards debt or into savings?",
+        height=90,
+        placeholder="e.g. Should I pay extra on my debt or put it in savings?",
         key="in_question",
     )
-    # keep S.question in sync for the next step
     S.question = st.session_state["in_question"]
 
     st.markdown('<hr>', unsafe_allow_html=True)
 
-    left, right = st.columns([1, 1])
-    with left:
+    back_col, go_col = st.columns([1, 1])
+    with back_col:
         if st.button("← Edit profile", key="step2_back", use_container_width=True):
             _go(1)
-    with right:
+    with go_col:
         if st.button(
-            "Ask FinPath →", key="step2_run", use_container_width=True,
-            type="primary",
+            "Ask FinPath →", key="step2_run", use_container_width=True, type="primary",
             disabled=not S.question.strip(),
         ):
-            # Reset conversation so a fresh thread starts on Step 3
-            S.messages     = []
-            S.thread_id    = None
-            S.pending_send = None
-            S.error        = None
+            S.messages = []; S.thread_id = None
+            S.pending_send = None; S.error = None
             _go(3)
 
-    _render_disclaimer()
+    _disclaimer()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 3 — CHAT
 # ─────────────────────────────────────────────────────────────────────────────
-
 def _send_message(text: str) -> None:
-    """Append a user message and flag it for agent processing on next rerun."""
     S.messages.append({"role": "user", "content": text, "tools": []})
     S.pending_send = text
     S.error = None
 
-
-def _run_agent_for_pending() -> None:
-    """If pending_send is set, call the agent and append the assistant reply."""
+def _run_agent() -> None:
     if not S.pending_send:
         return
-    user_text      = S.pending_send
+    user_text = S.pending_send
     S.pending_send = None
-
     with st.spinner("FinPath AI is thinking…"):
         try:
-            result = ask_agent(
-                message=user_text,
-                profile=_build_profile_dict(),
-                thread_id=S.thread_id,
-            )
-            S.thread_id = result["thread_id"]
-            S.messages.append({
-                "role":    "assistant",
-                "content": result["reply"],
-                "tools":   result["tools"],
-            })
-        except (RuntimeError, TimeoutError) as exc:
-            S.error = str(exc)
+            res = ask_agent(message=user_text, profile=_build_profile_dict(),
+                            thread_id=S.thread_id)
+            S.thread_id = res["thread_id"]
+            S.messages.append({"role": "assistant",
+                                "content": res["reply"], "tools": res["tools"]})
+        except (RuntimeError, TimeoutError) as e:
+            S.error = str(e)
             if S.messages and S.messages[-1]["role"] == "user":
                 S.messages.pop()
-        except Exception as exc:
-            S.error = "An unexpected error occurred. Check your Orchestrate environment is active."
+        except Exception as e:
+            S.error = "Unexpected error. Check that your Orchestrate environment is active."
             _log.debug("Agent call failed", exc_info=True)
             if S.messages and S.messages[-1]["role"] == "user":
                 S.messages.pop()
@@ -883,33 +892,37 @@ def _run_agent_for_pending() -> None:
 
 
 def render_step3() -> None:
-    _render_wordmark()
-    _render_step_indicator(3)
+    _wordmark()
+    _stepper(3)
 
     st.markdown(
-        '<h2 style="font:italic 400 1.7rem/1.1 var(--serif);margin:0 0 .25rem">'
-        'Your <span style="color:var(--orange)">conversation</span></h2>'
-        '<p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.06em;'
+        '<h2 style="font:italic 400 1.65rem/1.1 var(--serif);margin:0 0 .2rem">'
+        'Your <span style="color:var(--orange)">results</span></h2>'
+        '<p style="font-family:var(--mono);font-size:.62rem;letter-spacing:.05em;'
         'text-transform:uppercase;color:var(--muted);margin-bottom:1rem">'
         'Step 3 of 3 · Illustrative projections — not financial advice</p>',
         unsafe_allow_html=True,
     )
 
-    # Seed first user message from the question entered on Step 2
+    # Seed first turn from the question
     if not S.messages and S.question:
         _send_message(S.question)
 
-    # Process any pending agent call
-    _run_agent_for_pending()
+    _run_agent()
 
-    # Error banner
+    # Error
     if S.error:
-        st.error(S.error)
-        if st.button("Dismiss", key="err_dismiss"):
-            S.error = None
-            st.rerun()
+        st.markdown(
+            f'<div style="padding:.7rem 1rem;background:rgba(217,95,95,.10);'
+            f'border:1px solid rgba(217,95,95,.28);border-radius:var(--radius);'
+            f'font-family:var(--mono);font-size:.75rem;color:#D95F5F;margin-bottom:.8rem">'
+            f'⚠ {S.error}</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Dismiss ×", key="err_dismiss"):
+            S.error = None; st.rerun()
 
-    # Conversation history
+    # Chat history
     for msg in S.messages:
         if msg["role"] == "user":
             with st.chat_message("user"):
@@ -918,58 +931,42 @@ def render_step3() -> None:
             with st.chat_message("assistant"):
                 st.markdown(msg["content"])
                 if msg.get("tools"):
-                    _render_tool_chips(msg["tools"])
+                    _tool_chips(msg["tools"])
 
-    # Follow-up suggestion buttons (only after last assistant reply)
+    # Follow-up chips
     if S.messages and S.messages[-1]["role"] == "assistant" and not S.pending_send:
-        st.markdown(
-            '<p style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;'
-            'text-transform:uppercase;color:var(--dim);margin:.8rem 0 .35rem">'
-            'Follow-up suggestions</p>',
-            unsafe_allow_html=True,
-        )
-        sug_cols = st.columns(len(FOLLOWUP_SUGGESTIONS))
-        for col, suggestion in zip(sug_cols, FOLLOWUP_SUGGESTIONS):
+        _section_label("Follow-up suggestions", margin_top=".8rem")
+        fc = st.columns(len(FOLLOWUP_SUGGESTIONS), gap="small")
+        for col, sug in zip(fc, FOLLOWUP_SUGGESTIONS):
             with col:
-                st.markdown('<div class="suggestion-btn">', unsafe_allow_html=True)
-                st.button(
-                    suggestion,
-                    key=f"followup_{suggestion[:20]}",
-                    use_container_width=True,
-                    on_click=_send_message,
-                    args=(suggestion,),
-                )
+                st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
+                st.button(sug, key=f"fu_{sug[:18]}", use_container_width=True,
+                          on_click=_send_message, args=(sug,))
                 st.markdown('</div>', unsafe_allow_html=True)
 
-    # Chat input for free-form follow-ups
-    user_input = st.chat_input("Ask a follow-up, e.g. what if I paid $100 more a month?")
-    if user_input and user_input.strip():
-        _send_message(user_input.strip())
-        st.rerun()
+    # Chat input
+    inp = st.chat_input("Ask a follow-up…")
+    if inp and inp.strip():
+        _send_message(inp.strip()); st.rerun()
 
-    # Assumptions expander
+    # Assumptions
     if S.messages:
-        _render_assumptions_expander()
+        _assumptions_expander()
 
     st.markdown('<hr>', unsafe_allow_html=True)
 
-    left, right = st.columns([1, 1])
-    with left:
-        if st.button("← Edit profile", key="res_edit_profile"):
-            # Keep thread alive — next message will include updated profile
-            S.error = None
-            _go(1)
-    with right:
-        if st.button("New conversation", key="res_new_convo", use_container_width=True):
-            S.messages     = []
-            S.thread_id    = None
-            S.question     = ""
-            S.error        = None
-            S.pending_send = None
+    l_col, r_col = st.columns([1, 1])
+    with l_col:
+        if st.button("← Edit profile", key="res_back"):
+            S.error = None; _go(1)
+    with r_col:
+        if st.button("New conversation", key="res_new", use_container_width=True):
+            S.messages = []; S.thread_id = None
+            S.question = ""; S.error = None; S.pending_send = None
             st.session_state.pop("in_question", None)
             _go(2)
 
-    _render_disclaimer()
+    _disclaimer()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

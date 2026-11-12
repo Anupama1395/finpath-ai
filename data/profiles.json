@@ -26,11 +26,11 @@
   {
     "id": "debt_focused",
     "label": "Debt-focused — High-interest debt, limited savings",
-    "monthly_income": 5200,
-    "monthly_expenses": 3800,
-    "monthly_savings_contribution": 100,
+    "monthly_income": 4800,
+    "monthly_expenses": 3200,
+    "monthly_savings_contribution": 200,
     "monthly_debt_payment": 500,
-    "cash_savings": 800,
+    "cash_savings": 2000,
     "debt_balance": 18000,
     "debt_rate": 0.09,
     "savings_goal": "Eliminate high-interest debt as fast as possible, then build emergency fund"
