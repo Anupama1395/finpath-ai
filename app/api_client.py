@@ -8,7 +8,7 @@ utility, which reads the active environment token from the ADK config
 files (~/.wxo/).  No secrets are read, stored, or logged here.
 
 Usage:
-    from app.api_client import ask_agent
+    from api_client import ask_agent
     reply, scenarios = ask_agent("Can I save $500/mo?", thread_id=None)
 """
 
