@@ -7,7 +7,7 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | # | Change | Status | Bob screenshot |
 |---|--------|--------|----------------|
 | 1 | Repo cleanup | ✅ done | `paridhi_01_cleanup.png` |
-| 2 | Rate validation (percent vs. decimal bug) | ⏳ planned | `paridhi_02_rate-validation.png` |
+| 2 | Rate validation (percent vs. decimal bug) | ✅ done | `paridhi_02_rate-validation.png` |
 | 3 | Architecture diagram (Mermaid) | ⏳ planned | `paridhi_03_architecture.png` |
 | 4 | README: Built with Bob / Data sources / Responsible AI | ⏳ planned | `paridhi_04_readme.png` |
 | 5 | Deployable to Streamlit Cloud (secrets) | 🤝 needs your OK | `*_05_deploy.png` |
@@ -29,11 +29,11 @@ Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
 ## 2. Rate validation: percent vs. decimal 🐛
 
-**What:** Every function in `tools/core/finance.py` that takes an annual rate (`annual_rate`, `annual_debt_rate`, `annual_invest_rate`) now raises a clear `ValueError` if the rate is > 1, with the message *"rates must be decimals, e.g. 0.20 for 20%"*. New tests cover each function.
+**What:** Added a small `_validate_rates` helper to `tools/core/finance.py` and called it in all 8 functions that take a rate: `project_savings_growth`, `debt_payoff_months`, `debt_vs_invest`, `financial_health_check`, `goal_plan`, `debt_schedule`, `savings_schedule` and `multi_debt_plan` (each debt's `apr`). `compare_scenarios` is covered too, because it calls `project_savings_growth`. Any rate > 1 now raises `ValueError` with the message *"rates must be decimals, e.g. 0.20 for 20%"*. New file: `tests/test_rate_validation.py`.
 
 **Why:** The tools expect decimals, but users (and the LLM) naturally say "20%". If the agent passes `20` instead of `0.20`, the math treats it as **2000%**. For example, `debt_payoff_months(5000, 20, 20)` reports about **$8,333/month of interest** on a $5,000 balance. With validation, the agent gets an error it can recover from (and retries with 0.20) instead of confidently explaining a nonsense number. This protects our main promise that "every number comes from a verified tool".
 
-**Checked by:** New tests pass, and all existing tests still pass.
+**Checked by:** 24 new tests (rejects a percent-style rate, a boundary case, accepts a valid decimal). **217 passed** (all 193 original + 24 new). No formulas were changed: only `finance.py` and the new test file were touched.
 
 ---
 
