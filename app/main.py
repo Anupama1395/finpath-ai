@@ -168,10 +168,14 @@ DEFAULT_DEBTS = [
 # ─────────────────────────────────────────────────────────────────────────────
 # SESSION STATE
 # ─────────────────────────────────────────────────────────────────────────────
+def _default_goals() -> list[dict]:
+    return [{"name": "", "target": 0, "current_saved": 0, "months": 12}]
+
 def _init_state() -> None:
     defaults: dict = {
         "step":            1,
         "profile":         None,
+        # totals (derived from breakdown on save, or entered directly)
         "income":          5000,
         "expenses":        3000,
         "savings":         6000,
@@ -180,9 +184,22 @@ def _init_state() -> None:
         "debt_payment":    300,
         "debt_rate":       6.0,
         "goal":            "",
-        # goal plan inputs
-        "goal_target":     0,
-        "goal_months":     12,
+        # income breakdown
+        "inc_salary":      5000,
+        "inc_side":        0,
+        "inc_other":       0,
+        # expense breakdown
+        "exp_housing":     1200,
+        "exp_food":        600,
+        "exp_transport":   400,
+        "exp_subs":        200,
+        "exp_other":       600,
+        # savings breakdown
+        "sav_emergency":   3000,
+        "sav_invest":      2000,
+        "sav_other":       1000,
+        # multiple goals (list of dicts)
+        "goals":           _default_goals(),
         # multi-debt
         "use_multi_debt":  False,
         "multi_debts":     DEFAULT_DEBTS.copy(),
@@ -213,8 +230,17 @@ def _go(step: int) -> None:
 _INPUT_KEYS = [
     "in_income","in_expenses","in_savings","in_savings_contrib",
     "in_debt_bal","in_debt_payment","in_debt_rate","in_goal",
-    "in_goal_target","in_goal_months",
+    # breakdown keys
+    "in_inc_salary","in_inc_side","in_inc_other",
+    "in_exp_housing","in_exp_food","in_exp_transport","in_exp_subs","in_exp_other",
+    "in_sav_emergency","in_sav_invest","in_sav_other",
 ]
+
+def _sync_totals_from_breakdown() -> None:
+    """Recompute S.income, S.expenses, S.savings from their breakdown sub-fields."""
+    S.income   = int(S.inc_salary + S.inc_side + S.inc_other)
+    S.expenses = int(S.exp_housing + S.exp_food + S.exp_transport + S.exp_subs + S.exp_other)
+    S.savings  = int(S.sav_emergency + S.sav_invest + S.sav_other)
 
 def _load_profile(p: dict) -> None:
     income   = int(p["monthly_income"])
@@ -225,26 +251,57 @@ def _load_profile(p: dict) -> None:
     debt_pmt = int(p.get("monthly_debt_payment", 0))
     rate     = float(p["debt_rate"] * 100)
     goal     = p["savings_goal"]
+
     S.profile=p; S.income=income; S.expenses=expenses; S.savings=savings
     S.savings_contrib=contrib; S.debt_bal=debt_bal; S.debt_payment=debt_pmt
     S.debt_rate=rate; S.goal=goal
+
+    # Put totals into the primary breakdown field, zero the rest
+    S.inc_salary=income; S.inc_side=0; S.inc_other=0
+    S.exp_housing=expenses; S.exp_food=0; S.exp_transport=0; S.exp_subs=0; S.exp_other=0
+    S.sav_emergency=savings; S.sav_invest=0; S.sav_other=0
+
+    # Seed one goal from the profile goal text
+    S.goals = [{"name": goal[:40] if goal else "My goal", "target": 0, "current_saved": 0, "months": 12}]
+
+    # Write widget keys directly
     st.session_state["in_income"]=income; st.session_state["in_expenses"]=expenses
     st.session_state["in_savings"]=savings; st.session_state["in_savings_contrib"]=contrib
     st.session_state["in_debt_bal"]=debt_bal; st.session_state["in_debt_payment"]=debt_pmt
     st.session_state["in_debt_rate"]=rate; st.session_state["in_goal"]=goal
-    # reset multi-debt to single-debt default matching profile
+    st.session_state["in_inc_salary"]=income; st.session_state["in_inc_side"]=0; st.session_state["in_inc_other"]=0
+    st.session_state["in_exp_housing"]=expenses; st.session_state["in_exp_food"]=0
+    st.session_state["in_exp_transport"]=0; st.session_state["in_exp_subs"]=0; st.session_state["in_exp_other"]=0
+    st.session_state["in_sav_emergency"]=savings; st.session_state["in_sav_invest"]=0; st.session_state["in_sav_other"]=0
+
+    # Reset multi-debt
     S.multi_debts = [{"Name":"Primary Debt","Balance ($)":debt_bal,"APR (%)":rate,"Min Payment ($)":debt_pmt}]
 
 def _clear_profile() -> None:
     S.profile=None; S.income=5000; S.expenses=3000; S.savings=6000
     S.savings_contrib=200; S.debt_bal=10000; S.debt_payment=300; S.debt_rate=6.0; S.goal=""
-    for k,v in [("in_income",5000),("in_expenses",3000),("in_savings",6000),
-                ("in_savings_contrib",200),("in_debt_bal",10000),
-                ("in_debt_payment",300),("in_debt_rate",6.0),("in_goal","")]:
+    S.inc_salary=5000; S.inc_side=0; S.inc_other=0
+    S.exp_housing=1200; S.exp_food=600; S.exp_transport=400; S.exp_subs=200; S.exp_other=600
+    S.sav_emergency=3000; S.sav_invest=2000; S.sav_other=1000
+    S.goals = _default_goals()
+    for k,v in [
+        ("in_income",5000),("in_expenses",3000),("in_savings",6000),
+        ("in_savings_contrib",200),("in_debt_bal",10000),("in_debt_payment",300),
+        ("in_debt_rate",6.0),("in_goal",""),
+        ("in_inc_salary",5000),("in_inc_side",0),("in_inc_other",0),
+        ("in_exp_housing",1200),("in_exp_food",600),("in_exp_transport",400),
+        ("in_exp_subs",200),("in_exp_other",600),
+        ("in_sav_emergency",3000),("in_sav_invest",2000),("in_sav_other",1000),
+    ]:
         st.session_state[k]=v
     S.multi_debts = DEFAULT_DEBTS.copy()
 
 def _build_profile_dict() -> dict:
+    goals_summary = "; ".join(
+        f'{g["name"]} (${g["target"]:,} in {g["months"]} mo, saved ${g["current_saved"]:,})'
+        for g in S.goals if g.get("target", 0) > 0
+    ) or S.goal or "not specified"
+
     return {
         "monthly_income":               S.income,
         "monthly_expenses":             S.expenses,
@@ -253,7 +310,13 @@ def _build_profile_dict() -> dict:
         "current_savings":              S.savings,
         "debt_balance":                 S.debt_bal,
         "annual_debt_rate_pct":         S.debt_rate,
-        "goal":                         S.goal or "not specified",
+        "goal":                         goals_summary,
+        # breakdown detail for richer agent context
+        "income_breakdown":  {"salary": S.inc_salary, "side_income": S.inc_side, "other": S.inc_other},
+        "expense_breakdown": {"housing": S.exp_housing, "food": S.exp_food, "transport": S.exp_transport,
+                              "subscriptions": S.exp_subs, "other": S.exp_other},
+        "savings_breakdown": {"emergency_fund": S.sav_emergency, "investments": S.sav_invest, "other": S.sav_other},
+        "goals":             S.goals,
     }
 
 def _headroom() -> float:
@@ -417,44 +480,88 @@ def _health_card() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# GOAL CARD  (local compute)
+# GOAL CARDS  (local compute, one per goal)
 # ─────────────────────────────────────────────────────────────────────────────
-def _goal_card() -> None:
-    if not _LOCAL_MATH or S.goal_target <= 0 or S.goal_months <= 0: return
+def _one_goal_card(goal: dict, headroom_per_goal: float) -> None:
+    """Render a single goal feasibility card."""
+    if not _LOCAL_MATH: return
+    target  = goal.get("target", 0)
+    months  = goal.get("months", 12)
+    saved   = goal.get("current_saved", 0)
+    name    = goal.get("name", "") or "Goal"
+    if target <= 0 or months <= 0: return
     try:
-        headroom = _headroom()
-        g = _goal_plan(target_amount=float(S.goal_target), months_to_goal=int(S.goal_months),
-                       current_saved=0.0, monthly_headroom=headroom)
+        g = _goal_plan(target_amount=float(target), months_to_goal=int(months),
+                       current_saved=float(saved), monthly_headroom=headroom_per_goal)
     except Exception: return
 
-    ok     = g["feasible"]
-    color  = "#4EA86B" if ok else "#D95F5F"
-    icon   = "✓" if ok else "✗"
-    label  = "Feasible" if ok else "Not feasible"
-    req    = g["required_monthly"]
-    short  = g["shortfall_per_month"]
-    months_needed = g["months_needed_at_current_headroom"]
+    ok    = g["feasible"]
+    color = "#4EA86B" if ok else "#D95F5F"
+    icon  = "✓" if ok else "✗"
+    lbl   = "Feasible" if ok else "Not feasible"
+    req   = g["required_monthly"]
+    mn    = g["months_needed_at_current_headroom"]
 
-    detail = (
-        f'${req:,.0f}/mo needed · ${headroom:,.0f}/mo available · ${req - headroom:+,.0f}/mo to close'
-        if not ok else
-        f'${req:,.0f}/mo needed · ${headroom - req:,.0f}/mo to spare'
-    )
-    extra = ""
-    if not ok and months_needed:
-        extra = f'<div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-top:.3rem">At current rate: {months_needed} months to reach goal</div>'
+    detail = (f'${req:,.0f}/mo needed · ${headroom_per_goal:,.0f}/mo available · ${req-headroom_per_goal:+,.0f}/mo to close'
+              if not ok else f'${req:,.0f}/mo needed · ${headroom_per_goal-req:,.0f}/mo to spare')
+    extra  = (f'<div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-top:.3rem">At current headroom: {mn} months</div>'
+              if not ok and mn else "")
 
     st.markdown(
-        f'<div style="margin:.7rem 0;padding:.7rem .9rem;background:var(--surface);'
+        f'<div style="margin:.5rem 0;padding:.6rem .85rem;background:var(--surface);'
         f'border:1px solid var(--border);border-left:3px solid {color};border-radius:0 var(--radius-sm) var(--radius-sm) 0">'
-        f'<div style="display:flex;align-items:center;gap:.5rem">'
-        f'<span style="font-family:var(--mono);font-size:.85rem;color:{color};font-weight:600">{icon}</span>'
-        f'<span style="font-family:var(--mono);font-size:.7rem;color:{color};font-weight:600;text-transform:uppercase;letter-spacing:.06em">{label}</span></div>'
-        f'<div style="font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:.25rem">{detail}</div>'
+        f'<div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.15rem">'
+        f'<span style="font-family:var(--mono);font-size:.8rem;color:{color};font-weight:600">{icon}</span>'
+        f'<span style="font-family:var(--mono);font-size:.65rem;color:{color};font-weight:600;text-transform:uppercase;letter-spacing:.06em">{name}</span>'
+        f'<span style="font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-left:auto">{lbl}</span></div>'
+        f'<div style="font-family:var(--mono);font-size:.6rem;color:var(--muted)">{detail}</div>'
         f'{extra}</div>',
         unsafe_allow_html=True,
     )
 
+def _goal_cards() -> None:
+    """Render feasibility cards for all goals with targets."""
+    active = [g for g in S.goals if g.get("target", 0) > 0]
+    if not active: return
+    headroom      = _headroom()
+    headroom_each = max(0.0, headroom / len(active))
+    for goal in active:
+        _one_goal_card(goal, headroom_each)
+
+
+# ── Save / Load profile helpers ───────────────────────────────────────────────
+def _export_profile_json() -> str:
+    """Serialise all financial session state to JSON (no chat history, no thread_id)."""
+    return json.dumps({
+        "income": S.income, "expenses": S.expenses, "savings": S.savings,
+        "savings_contrib": S.savings_contrib, "debt_bal": S.debt_bal,
+        "debt_payment": S.debt_payment, "debt_rate": S.debt_rate, "goal": S.goal,
+        "inc_salary": S.inc_salary, "inc_side": S.inc_side, "inc_other": S.inc_other,
+        "exp_housing": S.exp_housing, "exp_food": S.exp_food,
+        "exp_transport": S.exp_transport, "exp_subs": S.exp_subs, "exp_other": S.exp_other,
+        "sav_emergency": S.sav_emergency, "sav_invest": S.sav_invest, "sav_other": S.sav_other,
+        "goals": S.goals, "multi_debts": S.multi_debts, "use_multi_debt": S.use_multi_debt,
+    }, indent=2)
+
+def _load_profile_from_dict(d: dict) -> None:
+    """Restore session state from an exported profile dict."""
+    for key in ["income","expenses","savings","savings_contrib","debt_bal",
+                "debt_payment","debt_rate","goal",
+                "inc_salary","inc_side","inc_other",
+                "exp_housing","exp_food","exp_transport","exp_subs","exp_other",
+                "sav_emergency","sav_invest","sav_other"]:
+        if key in d:
+            setattr(S, key, d[key])
+            # also write the widget key so inputs update
+            wk = f"in_{key}"
+            st.session_state[wk] = d[key]
+    if "goals" in d and isinstance(d["goals"], list):
+        S.goals = d["goals"]
+    if "multi_debts" in d:
+        S.multi_debts = d["multi_debts"]
+    if "use_multi_debt" in d:
+        S.use_multi_debt = d["use_multi_debt"]
+    S.profile = None  # mark as custom
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 1 — PROFILE
@@ -470,8 +577,31 @@ def render_step1() -> None:
         unsafe_allow_html=True,
     )
 
-    # Sample profiles grid
-    _section_label("Sample profiles", mt="0")
+    # ── Load / Save profile row ───────────────────────────────────────────────
+    _section_label("Load or save profile", mt="0")
+    ld_col, sv_col = st.columns([1, 1], gap="small")
+    with ld_col:
+        uploaded = st.file_uploader("⬆ Load a saved profile", type="json", key="profile_upload",
+                                    label_visibility="collapsed")
+        if uploaded is not None:
+            try:
+                d = json.load(uploaded)
+                _load_profile_from_dict(d)
+                st.rerun()
+            except Exception:
+                st.markdown('<div style="font-family:var(--mono);font-size:.63rem;color:#D95F5F;margin-top:.3rem">Could not read file — make sure it was saved by FinPath AI.</div>', unsafe_allow_html=True)
+    with sv_col:
+        st.download_button(
+            "⬇ Save my profile",
+            data=_export_profile_json().encode(),
+            file_name=f"finpath_profile_{date.today().isoformat()}.json",
+            mime="application/json",
+            use_container_width=True,
+            key="btn_save_profile",
+        )
+
+    # ── Sample profiles grid ──────────────────────────────────────────────────
+    _section_label("Sample profiles", mt=".9rem")
     rows = [PROFILES[i:i+3] for i in range(0, len(PROFILES), 3)]
     for row in rows:
         cols = st.columns(3)
@@ -493,40 +623,108 @@ def render_step1() -> None:
 
     st.markdown('<hr>', unsafe_allow_html=True)
 
-    # Form — two columns
-    lc, rc = st.columns([1,1], gap="large")
-    with lc:
-        _section_label("Income & expenses", mt="0")
-        S.income   = st.number_input("Monthly take-home income ($)",   min_value=0, step=100, value=int(S.income),   key="in_income")
-        S.expenses = st.number_input("Monthly essential expenses ($)", min_value=0, step=100, value=int(S.expenses), key="in_expenses")
-    with rc:
-        _section_label("Savings", mt="0")
-        S.savings        = st.number_input("Current cash savings ($)",       min_value=0, step=500, value=int(S.savings),        key="in_savings")
-        S.savings_contrib= st.number_input("Currently saving per month ($)", min_value=0, step=50,  value=int(S.savings_contrib), key="in_savings_contrib")
+    # ── Income breakdown ──────────────────────────────────────────────────────
+    with st.expander(f"💵 Income  —  total ${S.income:,}/mo", expanded=True):
+        ia, ib, ic = st.columns(3, gap="small")
+        with ia:
+            S.inc_salary = st.number_input("Salary / wages ($)", min_value=0, step=100, value=int(S.inc_salary), key="in_inc_salary")
+        with ib:
+            S.inc_side = st.number_input("Side income ($)", min_value=0, step=50, value=int(S.inc_side), key="in_inc_side")
+        with ic:
+            S.inc_other = st.number_input("Other income ($)", min_value=0, step=50, value=int(S.inc_other), key="in_inc_other")
+        S.income = int(S.inc_salary + S.inc_side + S.inc_other)
+        # keep legacy widget key in sync
+        st.session_state["in_income"] = S.income
+        st.caption(f"Total monthly income: ${S.income:,}")
 
+    # ── Expense breakdown ─────────────────────────────────────────────────────
+    with st.expander(f"💸 Expenses  —  total ${S.expenses:,}/mo", expanded=True):
+        ea, eb = st.columns(2, gap="small")
+        with ea:
+            S.exp_housing   = st.number_input("Housing / rent ($)",     min_value=0, step=50, value=int(S.exp_housing),   key="in_exp_housing")
+            S.exp_food      = st.number_input("Food & groceries ($)",   min_value=0, step=50, value=int(S.exp_food),      key="in_exp_food")
+            S.exp_transport = st.number_input("Transport ($)",          min_value=0, step=50, value=int(S.exp_transport), key="in_exp_transport")
+        with eb:
+            S.exp_subs  = st.number_input("Subscriptions ($)",  min_value=0, step=10, value=int(S.exp_subs),  key="in_exp_subs")
+            S.exp_other = st.number_input("Other expenses ($)", min_value=0, step=50, value=int(S.exp_other), key="in_exp_other")
+        S.expenses = int(S.exp_housing + S.exp_food + S.exp_transport + S.exp_subs + S.exp_other)
+        st.session_state["in_expenses"] = S.expenses
+        st.caption(f"Total monthly expenses: ${S.expenses:,}")
+
+    # ── Savings breakdown ─────────────────────────────────────────────────────
+    with st.expander(f"🏦 Savings  —  total ${S.savings:,}", expanded=False):
+        sa, sb, sc = st.columns(3, gap="small")
+        with sa:
+            S.sav_emergency = st.number_input("Emergency fund ($)", min_value=0, step=500, value=int(S.sav_emergency), key="in_sav_emergency")
+        with sb:
+            S.sav_invest = st.number_input("Investments ($)", min_value=0, step=500, value=int(S.sav_invest), key="in_sav_invest")
+        with sc:
+            S.sav_other = st.number_input("Other savings ($)", min_value=0, step=100, value=int(S.sav_other), key="in_sav_other")
+        S.savings = int(S.sav_emergency + S.sav_invest + S.sav_other)
+        st.session_state["in_savings"] = S.savings
+        st.caption(f"Total savings: ${S.savings:,}")
+
+    # ── Savings contribution & debt ───────────────────────────────────────────
     lc2, rc2 = st.columns([1,1], gap="large")
     with lc2:
-        _section_label("Debt", mt=".8rem")
-        S.debt_bal    = st.number_input("Total debt balance ($)",    min_value=0, step=1000, value=int(S.debt_bal),    key="in_debt_bal")
-        S.debt_payment= st.number_input("Monthly debt payment ($)", min_value=0, step=50,   value=int(S.debt_payment), key="in_debt_payment")
+        _section_label("Savings contribution", mt=".8rem")
+        S.savings_contrib = st.number_input("Currently saving per month ($)", min_value=0, step=50, value=int(S.savings_contrib), key="in_savings_contrib")
     with rc2:
-        _section_label("Rate & goal", mt=".8rem")
-        S.debt_rate = st.number_input("Debt interest rate (% p.a.)", min_value=0.0, max_value=50.0, step=0.5, value=float(S.debt_rate), key="in_debt_rate", format="%.1f")
-        S.goal      = st.text_input("Goal (optional)", value=S.goal, placeholder="e.g. Pay off debt in 3 years", key="in_goal")
+        _section_label("Goal context", mt=".8rem")
+        S.goal = st.text_input("Goal summary (optional)", value=S.goal, placeholder="e.g. Pay off debt in 3 years", key="in_goal")
 
-    # Goal plan inputs
-    st.markdown('<hr style="margin:.8rem 0">', unsafe_allow_html=True)
-    _section_label("Savings goal (optional)", mt="0")
-    gc1, gc2 = st.columns([1,1], gap="large")
-    with gc1:
-        S.goal_target = st.number_input("Target amount ($)", min_value=0, step=500, value=int(S.goal_target), key="in_goal_target")
-    with gc2:
-        S.goal_months = st.number_input("Months to reach it", min_value=1, max_value=360, step=1, value=int(S.goal_months), key="in_goal_months")
-    _goal_card()
+    lc3, rc3 = st.columns([1,1], gap="large")
+    with lc3:
+        _section_label("Debt", mt=".8rem")
+        S.debt_bal    = st.number_input("Total debt balance ($)",    min_value=0, step=1000, value=int(S.debt_bal),     key="in_debt_bal")
+        S.debt_payment= st.number_input("Monthly debt payment ($)", min_value=0, step=50,   value=int(S.debt_payment),  key="in_debt_payment")
+    with rc3:
+        _section_label("Debt rate", mt=".8rem")
+        S.debt_rate = st.number_input("Interest rate (% p.a.)", min_value=0.0, max_value=50.0, step=0.5, value=float(S.debt_rate), key="in_debt_rate", format="%.1f")
 
-    # Multi-debt table toggle
+    # ── Multiple goals ────────────────────────────────────────────────────────
     st.markdown('<hr style="margin:.8rem 0">', unsafe_allow_html=True)
-    S.use_multi_debt = st.checkbox("I have multiple debts (enter them below)", value=S.use_multi_debt)
+    _section_label("My goals", mt="0")
+
+    # Render each goal row
+    for idx, goal in enumerate(S.goals):
+        g1, g2, g3, g4, g_rm = st.columns([2, 1.2, 1.2, 1, 0.5], gap="small")
+        with g1:
+            S.goals[idx]["name"] = st.text_input(
+                "Goal name", value=goal.get("name", ""), placeholder="e.g. Emergency fund",
+                key=f"g_name_{idx}", label_visibility="collapsed" if idx > 0 else "visible",
+            )
+        with g2:
+            S.goals[idx]["target"] = st.number_input(
+                "Target ($)", min_value=0, step=500, value=int(goal.get("target", 0)),
+                key=f"g_target_{idx}", label_visibility="collapsed" if idx > 0 else "visible",
+            )
+        with g3:
+            S.goals[idx]["current_saved"] = st.number_input(
+                "Already saved ($)", min_value=0, step=100, value=int(goal.get("current_saved", 0)),
+                key=f"g_saved_{idx}", label_visibility="collapsed" if idx > 0 else "visible",
+            )
+        with g4:
+            S.goals[idx]["months"] = st.number_input(
+                "Months", min_value=1, max_value=360, step=1, value=int(goal.get("months", 12)),
+                key=f"g_months_{idx}", label_visibility="collapsed" if idx > 0 else "visible",
+            )
+        with g_rm:
+            if idx == 0:
+                st.markdown('<div style="height:1.6rem"></div>', unsafe_allow_html=True)  # align with labels
+            if st.button("✕", key=f"g_rm_{idx}", disabled=(len(S.goals) <= 1)):
+                S.goals.pop(idx); st.rerun()
+
+    if len(S.goals) < 5:
+        if st.button("＋ Add goal", key="g_add", type="tertiary"):
+            S.goals.append({"name": "", "target": 0, "current_saved": 0, "months": 12})
+            st.rerun()
+
+    _goal_cards()
+
+    # ── Multi-debt table ──────────────────────────────────────────────────────
+    st.markdown('<hr style="margin:.8rem 0">', unsafe_allow_html=True)
+    S.use_multi_debt = st.checkbox("I have multiple debts", value=S.use_multi_debt)
     if S.use_multi_debt:
         _section_label("Debt table — avalanche vs snowball will be computed for you", mt=".4rem")
         import pandas as pd
@@ -821,7 +1019,7 @@ def render_step3() -> None:
             "deterministic Python functions (`debt_payoff_months`, `savings_headroom`, etc.) and quotes "
             "their output directly.\n\n"
             "```\nYour question + profile\n  → IBM watsonx Orchestrate agent\n    → @tool functions\n"
-            "      → tools/core/finance.py (pure Python, no AI)\n        → verified numbers\n"
+            "      → deterministic math (pure Python, no AI)\n        → verified numbers\n"
             "          → plain-language explanation\n```\n\n"
             "All projections are illustrative. This is not financial advice."
         )
