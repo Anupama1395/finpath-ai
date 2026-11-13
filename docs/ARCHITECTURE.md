@@ -1,5 +1,46 @@
 # FinPath AI — Architecture
 
+## System diagram (Mermaid)
+
+```mermaid
+flowchart TD
+    User["User (browser)"]
+    UI["Streamlit UI - app/main.py<br/>Step 1: Profile / Step 2: Question / Step 3: Results"]
+    Client["app/api_client.py<br/>ask_agent: prepends profile, verifies figures"]
+    WXO["IBM watsonx Orchestrate<br/>finpath_agent - react_core ReAct loop"]
+
+    subgraph Wrappers["Tool wrappers - tools/*.py (12 registered tools)"]
+        direction TB
+        T1["cash_flow_tool.py<br/>monthly_cash_flow, emergency_fund_months"]
+        T2["projections_tool.py<br/>project_savings_growth"]
+        T3["scenarios_tool.py<br/>compare_scenarios"]
+        T4["debt_tool.py<br/>debt_payoff_months, debt_vs_invest"]
+        T5["emergency_tool.py<br/>emergency_fund_check"]
+        T6["health_tool.py<br/>financial_health_check"]
+        T7["savings_tool.py<br/>savings_headroom"]
+        T8["stress_tool.py<br/>stress_test"]
+        T9["goal_tool.py<br/>goal_plan"]
+        T10["multi_debt_tool.py<br/>multi_debt_plan"]
+        T1 ~~~ T6
+        T2 ~~~ T7
+        T3 ~~~ T8
+        T4 ~~~ T9
+        T5 ~~~ T10
+    end
+
+    Core["tools/core/finance.py<br/>pure Python math, stdlib only"]
+
+    User -->|"fills profile, asks question"| UI
+    UI -->|"ask_agent with message, profile, thread_id"| Client
+    Client -->|"profile block + question via ADK RunClient"| WXO
+    WXO -->|"tool calls"| Wrappers
+    Wrappers -->|"delegate all math"| Core
+    UI -.->|"direct import for live health card and goal cards"| Core
+    WXO -->|"reply, tool names, thread_id"| Client
+    Client -->|"reply, tools used, verified flag"| UI
+    UI -->|"chat, tool chips, verified badge"| User
+```
+
 ## System overview
 
 ```
@@ -110,3 +151,65 @@ The ADK (`orchestrate` CLI) stores a short-lived MCSP token in `~/.wxo/`. Refres
 orchestrate env activate finpath --api-key "YOUR_KEY"
 ```
 No secrets are stored in `.env` for the UI path. The `.env` / `.env.example` are provided for reference only.
+
+## Tool reference
+
+
+| Tool | Wrapper file | What it calculates |
+|---|---|---|
+| monthly_cash_flow | cash_flow_tool.py | Net monthly surplus: income − expenses − debt payments − savings contribution |
+| emergency_fund_months | cash_flow_tool.py | How many months of expenses current savings covers |
+| project_savings_growth | projections_tool.py | Future savings value via monthly compound interest over a chosen horizon |
+| compare_scenarios | scenarios_tool.py | Side-by-side comparison of 1–3 scenarios: cash flow, emergency months, projected savings |
+| debt_payoff_months | debt_tool.py | Months to full payoff and total interest for a single fixed-rate debt |
+| debt_vs_invest | debt_tool.py | Net worth at end of horizon: "pay debt first" vs "invest immediately" |
+| emergency_fund_check | emergency_tool.py | Status (low / ok / strong), months covered, gap to the 3-month guideline |
+| financial_health_check | health_tool.py | Composite 0–100 score with four sub-scores and ordered priorities |
+| savings_headroom | savings_tool.py | Maximum extra monthly savings capacity after expenses and current contributions |
+| stress_test | stress_tool.py | Re-runs cash flow and emergency coverage after an income or expense % shock |
+| goal_plan | goal_tool.py | Whether a savings target is reachable in N months, and the required monthly contribution |
+| multi_debt_plan | multi_debt_tool.py | Avalanche vs snowball payoff for multiple debts; picks the lower-interest strategy |
+
+## Guardrails
+
+The following rules are set in [`agents/finpath_agent.yaml`](../agents/finpath_agent.yaml) and applied on every response.
+
+### Numbers must come from tools
+
+The agent must **never compute, estimate, or round any figure itself**. Every number in a response must come directly from a tool call. When a tool returns a `summary` field, the agent reproduces it **word-for-word** before adding plain-language context.
+
+### All assumptions must be stated
+
+Every response containing numbers must list the exact inputs used: income, expenses, debt balance, interest rate, payment amounts, projection horizon, and growth rate. The four defaults that must be declared when applied:
+
+- **Annual savings growth rate:** 5% p.a. (when the user does not specify)
+- **Projection horizon:** 12 months (when the user does not specify)
+- **Emergency fund target:** 3–6 months of essential expenses (guideline only)
+- **Assumed investment rate for `debt_vs_invest`:** 7% p.a. (when not specified); the agent flags debt-first if the debt rate exceeds this
+
+### Profile context
+
+The debt rate is supplied in both percentage and decimal in every message by `api_client._build_message()` so the agent passes the correct decimal form to tools without conversion. The agent only asks a clarifying question if a required value is **explicitly missing or zero** — it never assumes a value.
+
+### Multi-turn continuity
+Follow-up questions (e.g. "what if I paid $100 more a month?") are handled by calling the relevant tool again with the changed inputs and explicitly comparing the new result with the previous answer. Both the old and the new number must appear in the reply.
+
+### Debt-first flag
+
+After calling `debt_vs_invest`, if `annual_debt_rate > assumed_invest_rate`, the agent proactively highlights this and recommends considering the debt-payoff-first strategy before investing.
+
+### No product recommendations
+
+The agent must never recommend specific financial products, securities, mutual funds, ETFs, or any buy/sell action. `compare_scenarios` and `debt_vs_invest` are presented as illustrative comparisons only.
+
+### Mandatory disclaimer
+
+Every response closes with the exact sentence:
+
+> "This is educational information, not financial advice."
+
+This is reinforced in the Streamlit UI with the persistent banner: *"Educational tool · Not financial advice · All projections are illustrative only."*
+
+### Figure verification
+
+`api_client._verify_figures()` cross-checks every dollar amount and percentage in the agent reply against the raw tool outputs (±$0.51 rounding tolerance) after every turn. The result is surfaced in the UI as a verified badge.
