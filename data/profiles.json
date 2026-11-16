@@ -9,7 +9,10 @@
     "cash_savings": 1500,
     "debt_balance": 8000,
     "debt_rate": 0.07,
-    "savings_goal": "Pay off student debt faster while building a 3-month emergency fund"
+    "savings_goal": "Pay off student debt faster while building a 3-month emergency fund",
+    "income_breakdown":  {"salary": 3200, "side_income": 0, "other": 0},
+    "expense_breakdown": {"housing": 1200, "food": 500, "transport": 300, "subscriptions": 100, "other": 300},
+    "savings_breakdown": {"emergency_fund": 1500, "investments": 0, "other": 0}
   },
   {
     "id": "mid_career",
@@ -21,7 +24,10 @@
     "cash_savings": 12000,
     "debt_balance": 5000,
     "debt_rate": 0.045,
-    "savings_goal": "Maximise investment contributions now that debt is nearly paid off"
+    "savings_goal": "Maximise investment contributions now that debt is nearly paid off",
+    "income_breakdown":  {"salary": 6500, "side_income": 0, "other": 0},
+    "expense_breakdown": {"housing": 1800, "food": 700, "transport": 450, "subscriptions": 150, "other": 700},
+    "savings_breakdown": {"emergency_fund": 8000, "investments": 3000, "other": 1000}
   },
   {
     "id": "debt_focused",
@@ -33,7 +39,10 @@
     "cash_savings": 2000,
     "debt_balance": 18000,
     "debt_rate": 0.09,
-    "savings_goal": "Eliminate high-interest debt as fast as possible, then build emergency fund"
+    "savings_goal": "Eliminate high-interest debt as fast as possible, then build emergency fund",
+    "income_breakdown":  {"salary": 4800, "side_income": 0, "other": 0},
+    "expense_breakdown": {"housing": 1400, "food": 650, "transport": 500, "subscriptions": 150, "other": 500},
+    "savings_breakdown": {"emergency_fund": 2000, "investments": 0, "other": 0}
   },
   {
     "id": "student",
@@ -45,7 +54,10 @@
     "cash_savings": 2400,
     "debt_balance": 8000,
     "debt_rate": 0.06,
-    "savings_goal": "Build a 3-month emergency fund while making minimum loan payments"
+    "savings_goal": "Build a 3-month emergency fund while making minimum loan payments",
+    "income_breakdown":  {"salary": 1200, "side_income": 600, "other": 0},
+    "expense_breakdown": {"housing": 600, "food": 300, "transport": 150, "subscriptions": 50, "other": 100},
+    "savings_breakdown": {"emergency_fund": 2400, "investments": 0, "other": 0}
   },
   {
     "id": "early_career",
@@ -57,7 +69,10 @@
     "cash_savings": 6000,
     "debt_balance": 15000,
     "debt_rate": 0.055,
-    "savings_goal": "Increase monthly investment from $200 to $500 and still keep 3 months emergency cash"
+    "savings_goal": "Increase monthly investment from $200 to $500 and still keep 3 months emergency cash",
+    "income_breakdown":  {"salary": 4500, "side_income": 0, "other": 0},
+    "expense_breakdown": {"housing": 1300, "food": 600, "transport": 400, "subscriptions": 150, "other": 350},
+    "savings_breakdown": {"emergency_fund": 4000, "investments": 1500, "other": 500}
   },
   {
     "id": "family",
@@ -69,6 +84,9 @@
     "cash_savings": 18000,
     "debt_balance": 220000,
     "debt_rate": 0.065,
-    "savings_goal": "Save an extra $400/month for college fund without cutting emergency reserves below 4 months"
+    "savings_goal": "Save an extra $400/month for college fund without cutting emergency reserves below 4 months",
+    "income_breakdown":  {"salary": 7000, "side_income": 1200, "other": 0},
+    "expense_breakdown": {"housing": 2500, "food": 1000, "transport": 600, "subscriptions": 200, "other": 1200},
+    "savings_breakdown": {"emergency_fund": 12000, "investments": 5000, "other": 1000}
   }
 ]
