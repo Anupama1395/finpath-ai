@@ -155,10 +155,11 @@ SUGGESTIONS = [
     "What if my income dropped by 10%?",
     "What if expenses rose by 15%?",
 ]
+# (short chip label, full question sent to the agent)
 FOLLOWUP_SUGGESTIONS = [
-    "+$100/mo debt payment?",
-    "Income down 10%?",
-    "Invest vs pay debt?",
+    ("+$100/mo debt payment?", "What if I paid $100 more a month toward my debt?"),
+    ("Income down 10%?",       "What if my income dropped 10%?"),
+    ("Invest vs pay debt?",    "Should I invest instead of paying debt?"),
 ]
 
 DEFAULT_DEBTS = [
@@ -289,6 +290,9 @@ def _load_profile(p: dict) -> None:
     # Seed an Emergency fund goal: target = 3 × expenses, saved = cash_savings
     ef_target = expenses * 3
     S.goals = [{"name": "Emergency fund", "target": ef_target, "current_saved": savings, "months": 12}]
+    # Clear stale goal widget state so the seeded goal shows (otherwise old widget values overwrite it)
+    for k in [k for k in st.session_state if str(k).startswith(("g_name_", "g_target_", "g_saved_", "g_months_"))]:
+        del st.session_state[k]
 
     # Write widget keys directly
     st.session_state["in_income"]=income; st.session_state["in_expenses"]=expenses
@@ -1043,10 +1047,10 @@ def render_step3() -> None:
     if S.messages and S.messages[-1]["role"]=="assistant" and not S.pending_send:
         _section_label("Follow-up suggestions", mt=".8rem")
         fc = st.columns(len(FOLLOWUP_SUGGESTIONS), gap="small")
-        for col, sug in zip(fc, FOLLOWUP_SUGGESTIONS):
+        for col, (label, question) in zip(fc, FOLLOWUP_SUGGESTIONS):
             with col:
                 st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
-                st.button(sug, key=f"fu_{sug[:18]}", use_container_width=True, on_click=_send_message, args=(sug,))
+                st.button(label, key=f"fu_{label[:18]}", use_container_width=True, on_click=_send_message, args=(question,))
                 st.markdown('</div>', unsafe_allow_html=True)
 
     # Chat input
