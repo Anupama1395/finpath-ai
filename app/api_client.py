@@ -86,27 +86,31 @@ def _resolve_credentials() -> tuple[str | None, str | None]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _make_clients():  # type: ignore[return]
-    """Return fresh (RunClient, ThreadsClient) using the best available credentials."""
+    """Return (RunClient, ThreadsClient, agent_id) using the best available credentials."""
     from ibm_watsonx_orchestrate.client.chat.run_client import RunClient
     from ibm_watsonx_orchestrate.client.threads.threads_client import ThreadsClient
-    from ibm_watsonx_orchestrate.client.utils import instantiate_client
 
     api_key, instance_url = _resolve_credentials()
 
     if api_key and instance_url:
-        # Explicit credentials path — initialise clients with the resolved values
-        # without exposing them in any log line.
-        try:
-            run_client     = instantiate_client(RunClient,     api_key=api_key, url=instance_url)
-            threads_client = instantiate_client(ThreadsClient, api_key=api_key, url=instance_url)
-            return run_client, threads_client
-        except TypeError:
-            # Older ADK versions may not accept keyword args; fall back to env-var approach
-            os.environ.setdefault("IBM_CLOUD_API_KEY",       api_key)
-            os.environ.setdefault("ORCHESTRATE_INSTANCE_URL", instance_url)
+        # Cloud path: exchange the API key for an IAM token ourselves.
+        # instantiate_client() only reads ~/.wxo/, which doesn't exist on Streamlit Cloud.
+        from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+        from ibm_watsonx_orchestrate.client.agents.agent_client import AgentClient
 
-    # Default: ADK reads ~/.wxo/ or env vars it set itself
-    return instantiate_client(RunClient), instantiate_client(ThreadsClient)
+        auth = IAMAuthenticator(apikey=api_key)
+        run_client     = RunClient(base_url=instance_url, authenticator=auth)
+        threads_client = ThreadsClient(base_url=instance_url, authenticator=auth)
+        drafts = AgentClient(base_url=instance_url, authenticator=auth).get_draft_by_name(AGENT_NAME)
+        if not drafts:
+            raise RuntimeError(f"Agent '{AGENT_NAME}' not found on this Orchestrate instance.")
+        return run_client, threads_client, drafts[0]["id"]
+
+    # Local path: ADK reads ~/.wxo/ (set by `orchestrate env activate`)
+    from ibm_watsonx_orchestrate.client.utils import instantiate_client
+    from ibm_watsonx_orchestrate.cli.commands.agents.agents_helper import get_agent_id_by_name
+    return (instantiate_client(RunClient), instantiate_client(ThreadsClient),
+            get_agent_id_by_name(AGENT_NAME))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -253,13 +257,10 @@ def ask_agent(
         RuntimeError: wraps any ADK / network error with a user-friendly message.
         TimeoutError: if the run doesn't complete within RUN_TIMEOUT_SECONDS.
     """
-    from ibm_watsonx_orchestrate.cli.commands.agents.agents_helper import get_agent_id_by_name
-
     full_message = _build_message(message, profile)
 
     try:
-        run_client, threads_client = _make_clients()
-        agent_id = get_agent_id_by_name(AGENT_NAME)
+        run_client, threads_client, agent_id = _make_clients()
 
         run_response = run_client.create_run(
             message=full_message,
@@ -306,7 +307,7 @@ def ask_agent(
 
     except (RuntimeError, TimeoutError):
         raise
-    except Exception as exc:
+    except (Exception, SystemExit) as exc:  # ADK calls sys.exit() on missing/expired login
         logger.debug("ADK call failed", exc_info=True)
         raise RuntimeError(
             "Could not reach FinPath AI. "

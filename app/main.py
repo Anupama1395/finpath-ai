@@ -983,7 +983,9 @@ def render_step3() -> None:
         )
         # Show local tools in demo mode: health card + what-if explorer
         _health_card()
-        _whatiif_section()
+        # What-if is rendered further down once there are messages; avoid a duplicate-key crash
+        if _LOCAL_MATH and not S.messages:
+            _whatiif_section()
         col_retry, _ = st.columns([1, 2])
         with col_retry:
             if st.button("↺ Retry connection", key="err_retry"):
