@@ -290,9 +290,17 @@ def _load_profile(p: dict) -> None:
     # Seed an Emergency fund goal: target = 3 × expenses, saved = cash_savings
     ef_target = expenses * 3
     S.goals = [{"name": "Emergency fund", "target": ef_target, "current_saved": savings, "months": 12}]
-    # Clear stale goal widget state so the seeded goal shows (otherwise old widget values overwrite it)
-    for k in [k for k in st.session_state if str(k).startswith(("g_name_", "g_target_", "g_saved_", "g_months_"))]:
-        del st.session_state[k]
+    # Write goal widget keys directly (same pattern as all other inputs).
+    # Deleting keys doesn't work reliably for widgets that are currently rendered;
+    # explicitly setting them is the only way to guarantee the new value appears.
+    st.session_state["g_name_0"]   = "Emergency fund"
+    st.session_state["g_target_0"] = ef_target
+    st.session_state["g_saved_0"]  = savings
+    st.session_state["g_months_0"] = 12
+    # Remove any extra goal rows that may have been added in a previous session
+    for extra in range(1, 10):
+        for pfx in ("g_name_", "g_target_", "g_saved_", "g_months_"):
+            st.session_state.pop(f"{pfx}{extra}", None)
 
     # Write widget keys directly
     st.session_state["in_income"]=income; st.session_state["in_expenses"]=expenses
