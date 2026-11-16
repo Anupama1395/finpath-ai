@@ -97,6 +97,53 @@ streamlit run app/main.py
 
 ---
 
+## Deploy
+
+### Streamlit Community Cloud
+
+FinPath AI can be deployed to [Streamlit Community Cloud](https://streamlit.io/cloud) with full AI chat support (when credentials are provided) or in **Demo mode** (health card + what-if projections remain fully functional without an agent).
+
+#### Steps
+
+1. **Fork / push** the repo to your GitHub account.
+
+2. **Create the app** on [share.streamlit.io](https://share.streamlit.io):
+   - Repository: `<your-github-org>/finpath-ai`
+   - Branch: `main` (or your branch)
+   - Main file: `app/main.py`
+
+3. **Add secrets** in the Streamlit Cloud app settings → *Secrets* panel:
+
+   ```toml
+   IBM_CLOUD_API_KEY = "your_ibm_cloud_api_key_here"
+   ORCHESTRATE_INSTANCE_URL = "https://api.<region>.watson-orchestrate.cloud.ibm.com/instances/<instance-id>"
+   ```
+
+   A template is provided at [`.streamlit/secrets.toml.example`](.streamlit/secrets.toml.example).
+   > **Never commit `secrets.toml`** — it is listed in `.gitignore`.
+
+4. **Deploy.** Streamlit Community Cloud will install dependencies from `requirements.txt` automatically.
+
+#### Credential priority
+
+The app resolves credentials in this order (first match wins):
+
+| Priority | Source | When used |
+|---|---|---|
+| 1 | `st.secrets` | Streamlit Community Cloud deployment |
+| 2 | Environment variables (`IBM_CLOUD_API_KEY`, `ORCHESTRATE_INSTANCE_URL`) | Local `.env` or CI |
+| 3 | ADK local config (`~/.wxo/`) | Local developer workflow via `orchestrate env activate` |
+
+#### Demo mode (agent offline)
+
+If no credentials are configured or the Orchestrate instance is unreachable, the app continues in **Demo mode**:
+- A "Demo mode · agent offline" banner is shown — no stack trace
+- The live financial health card (score, sub-scores, priorities) works fully
+- The what-if explorer (debt payoff & savings charts) works fully
+- AI chat responses are unavailable until the agent is reachable
+
+---
+
 ## Run tests
 
 Unit tests require no credentials:

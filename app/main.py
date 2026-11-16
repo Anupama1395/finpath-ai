@@ -209,6 +209,9 @@ def _init_state() -> None:
         "thread_id":       None,
         "pending_send":    None,
         "error":           None,
+        "agent_offline":   False,   # True when agent is unreachable (demo mode)
+        "initial_sent":    False,
+        "last_failed":     None,
         # what-if slider state
         "wi_extra_pmt":    0,
         "wi_income_chg":   0,
@@ -799,7 +802,7 @@ def render_step2() -> None:
         if st.button("← Edit profile", key="step2_back", use_container_width=True): _go(1)
     with gc:
         if st.button("Ask FinPath →", key="step2_run", use_container_width=True, type="primary", disabled=not S.question.strip()):
-            S.messages=[]; S.thread_id=None; S.pending_send=None; S.error=None; _go(3)
+            S.messages=[]; S.thread_id=None; S.pending_send=None; S.error=None; S.initial_sent=False; _go(3)
     _disclaimer()
 
 
@@ -816,15 +819,18 @@ def _run_agent() -> None:
     with st.spinner("FinPath AI is thinking…"):
         try:
             res = ask_agent(message=user_text, profile=_build_profile_dict(), thread_id=S.thread_id)
-            S.thread_id = res["thread_id"]
-            verified    = res.get("verified", None)
+            S.thread_id    = res["thread_id"]
+            verified       = res.get("verified", None)
+            S.agent_offline = False
             S.messages.append({"role":"assistant","content":res["reply"],
                                 "tools":res["tools"],"verified":verified})
-        except (RuntimeError, TimeoutError) as e:
-            S.error = str(e)
+        except (RuntimeError, TimeoutError):
+            S.agent_offline = True
+            S.last_failed   = user_text
             if S.messages and S.messages[-1]["role"]=="user": S.messages.pop()
         except Exception:
-            S.error = "Unexpected error. Check your Orchestrate environment is active."
+            S.agent_offline = True
+            S.last_failed   = user_text
             if S.messages and S.messages[-1]["role"]=="user": S.messages.pop()
     st.rerun()
 
@@ -955,19 +961,34 @@ def render_step3() -> None:
         unsafe_allow_html=True,
     )
 
-    if not S.messages and S.question:
+    if not S.initial_sent and S.question:
+        S.initial_sent = True
         _send_message(S.question)
 
     _run_agent()
 
-    if S.error:
+    if S.agent_offline:
         st.markdown(
-            f'<div style="padding:.7rem 1rem;background:rgba(217,95,95,.10);'
-            f'border:1px solid rgba(217,95,95,.28);border-radius:var(--radius);'
-            f'font-family:var(--mono);font-size:.75rem;color:#D95F5F;margin-bottom:.8rem">'
-            f'⚠ {S.error}</div>', unsafe_allow_html=True,
+            '<div style="padding:.75rem 1rem 1rem;background:rgba(212,168,75,.08);'
+            'border:1px solid rgba(212,168,75,.30);border-radius:var(--radius);'
+            'margin-bottom:1.1rem">'
+            '<p style="font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;'
+            'text-transform:uppercase;color:#D4A84B;margin:0 0 .35rem">Demo mode · agent offline</p>'
+            '<p style="font-family:var(--mono);font-size:.72rem;color:var(--muted);margin:0;line-height:1.5">'
+            'The watsonx Orchestrate agent could not be reached. '
+            'Your financial health card and what-if projections below are computed locally '
+            'and are fully accurate — only the AI chat responses are unavailable.</p>'
+            '</div>',
+            unsafe_allow_html=True,
         )
-        if st.button("Dismiss ×", key="err_dismiss"): S.error=None; st.rerun()
+        # Show local tools in demo mode: health card + what-if explorer
+        _health_card()
+        _whatiif_section()
+        col_retry, _ = st.columns([1, 2])
+        with col_retry:
+            if st.button("↺ Retry connection", key="err_retry"):
+                if S.last_failed:
+                    S.agent_offline = False; _send_message(S.last_failed); S.last_failed = None; st.rerun()
 
     # Sidebar history
     with st.sidebar:
@@ -1031,7 +1052,7 @@ def render_step3() -> None:
         if st.button("← Edit profile", key="res_back"): S.error=None; _go(1)
     with rc:
         if st.button("New conversation", key="res_new", use_container_width=True):
-            S.messages=[]; S.thread_id=None; S.question=""; S.error=None; S.pending_send=None
+            S.messages=[]; S.thread_id=None; S.question=""; S.error=None; S.pending_send=None; S.initial_sent=False
             st.session_state.pop("in_question", None); _go(2)
 
     # Download button
