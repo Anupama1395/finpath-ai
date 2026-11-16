@@ -155,10 +155,11 @@ SUGGESTIONS = [
     "What if my income dropped by 10%?",
     "What if expenses rose by 15%?",
 ]
+# (short chip label, full question sent to the agent)
 FOLLOWUP_SUGGESTIONS = [
-    "What if I paid $100 more a month?",
-    "What if my income dropped 10%?",
-    "Should I invest instead of paying debt?",
+    ("+$100/mo debt payment?", "What if I paid $100 more a month toward my debt?"),
+    ("Income down 10%?",       "What if my income dropped 10%?"),
+    ("Invest vs pay debt?",    "Should I invest instead of paying debt?"),
 ]
 
 DEFAULT_DEBTS = [
@@ -259,23 +260,49 @@ def _load_profile(p: dict) -> None:
     S.savings_contrib=contrib; S.debt_bal=debt_bal; S.debt_payment=debt_pmt
     S.debt_rate=rate; S.goal=goal
 
-    # Put totals into the primary breakdown field, zero the rest
-    S.inc_salary=income; S.inc_side=0; S.inc_other=0
-    S.exp_housing=expenses; S.exp_food=0; S.exp_transport=0; S.exp_subs=0; S.exp_other=0
-    S.sav_emergency=savings; S.sav_invest=0; S.sav_other=0
+    # Income breakdown — use profile fields if present, else put total in salary
+    inc = p.get("income_breakdown", {})
+    S.inc_salary   = int(inc.get("salary",       income))
+    S.inc_side     = int(inc.get("side_income",  0))
+    S.inc_other    = int(inc.get("other",         0))
+    # Guard: if breakdown doesn't sum to income, fall back to total-in-salary
+    if S.inc_salary + S.inc_side + S.inc_other != income:
+        S.inc_salary = income; S.inc_side = 0; S.inc_other = 0
 
-    # Seed one goal from the profile goal text
-    S.goals = [{"name": goal[:40] if goal else "My goal", "target": 0, "current_saved": 0, "months": 12}]
+    # Expense breakdown — use profile fields if present, else put total in housing
+    exp = p.get("expense_breakdown", {})
+    S.exp_housing   = int(exp.get("housing",       expenses if not exp else 0))
+    S.exp_food      = int(exp.get("food",          0))
+    S.exp_transport = int(exp.get("transport",     0))
+    S.exp_subs      = int(exp.get("subscriptions", 0))
+    S.exp_other     = int(exp.get("other",         0))
+    if S.exp_housing + S.exp_food + S.exp_transport + S.exp_subs + S.exp_other != expenses:
+        S.exp_housing = expenses; S.exp_food = 0; S.exp_transport = 0; S.exp_subs = 0; S.exp_other = 0
+
+    # Savings breakdown — use profile fields if present, else put total in emergency
+    sav = p.get("savings_breakdown", {})
+    S.sav_emergency = int(sav.get("emergency_fund", savings if not sav else 0))
+    S.sav_invest    = int(sav.get("investments",    0))
+    S.sav_other     = int(sav.get("other",          0))
+    if S.sav_emergency + S.sav_invest + S.sav_other != savings:
+        S.sav_emergency = savings; S.sav_invest = 0; S.sav_other = 0
+
+    # Seed an Emergency fund goal: target = 3 × expenses, saved = cash_savings
+    ef_target = expenses * 3
+    S.goals = [{"name": "Emergency fund", "target": ef_target, "current_saved": savings, "months": 12}]
+    # Clear stale goal widget state so the seeded goal shows (otherwise old widget values overwrite it)
+    for k in [k for k in st.session_state if str(k).startswith(("g_name_", "g_target_", "g_saved_", "g_months_"))]:
+        del st.session_state[k]
 
     # Write widget keys directly
     st.session_state["in_income"]=income; st.session_state["in_expenses"]=expenses
     st.session_state["in_savings"]=savings; st.session_state["in_savings_contrib"]=contrib
     st.session_state["in_debt_bal"]=debt_bal; st.session_state["in_debt_payment"]=debt_pmt
     st.session_state["in_debt_rate"]=rate; st.session_state["in_goal"]=goal
-    st.session_state["in_inc_salary"]=income; st.session_state["in_inc_side"]=0; st.session_state["in_inc_other"]=0
-    st.session_state["in_exp_housing"]=expenses; st.session_state["in_exp_food"]=0
-    st.session_state["in_exp_transport"]=0; st.session_state["in_exp_subs"]=0; st.session_state["in_exp_other"]=0
-    st.session_state["in_sav_emergency"]=savings; st.session_state["in_sav_invest"]=0; st.session_state["in_sav_other"]=0
+    st.session_state["in_inc_salary"]=S.inc_salary; st.session_state["in_inc_side"]=S.inc_side; st.session_state["in_inc_other"]=S.inc_other
+    st.session_state["in_exp_housing"]=S.exp_housing; st.session_state["in_exp_food"]=S.exp_food
+    st.session_state["in_exp_transport"]=S.exp_transport; st.session_state["in_exp_subs"]=S.exp_subs; st.session_state["in_exp_other"]=S.exp_other
+    st.session_state["in_sav_emergency"]=S.sav_emergency; st.session_state["in_sav_invest"]=S.sav_invest; st.session_state["in_sav_other"]=S.sav_other
 
     # Reset multi-debt
     S.multi_debts = [{"Name":"Primary Debt","Balance ($)":debt_bal,"APR (%)":rate,"Min Payment ($)":debt_pmt}]
@@ -584,8 +611,11 @@ def render_step1() -> None:
     _section_label("Load or save profile", mt="0")
     ld_col, sv_col = st.columns([1, 1], gap="small")
     with ld_col:
-        uploaded = st.file_uploader("⬆ Load a saved profile", type="json", key="profile_upload",
-                                    label_visibility="collapsed")
+        uploaded = st.file_uploader(
+            "⬆ Upload a saved profile (.json, a few KB)",
+            type="json", key="profile_upload",
+            label_visibility="collapsed",
+        )
         if uploaded is not None:
             try:
                 d = json.load(uploaded)
@@ -674,7 +704,7 @@ def render_step1() -> None:
         S.savings_contrib = st.number_input("Currently saving per month ($)", min_value=0, step=50, value=int(S.savings_contrib), key="in_savings_contrib")
     with rc2:
         _section_label("Goal context", mt=".8rem")
-        S.goal = st.text_input("Goal summary (optional)", value=S.goal, placeholder="e.g. Pay off debt in 3 years", key="in_goal")
+        S.goal = st.text_area("Goal summary (optional)", value=S.goal, placeholder="e.g. Pay off debt in 3 years", key="in_goal", height=68)
 
     lc3, rc3 = st.columns([1,1], gap="large")
     with lc3:
@@ -910,7 +940,7 @@ def _whatiif_section() -> None:
             y=alt.Y("Debt Balance ($):Q", axis=alt.Axis(labelColor="#A6ACB4", gridColor="rgba(255,255,255,.05)", domainColor="rgba(0,0,0,0)", tickColor="rgba(0,0,0,0)", format="$,.0f")),
             color=alt.Color("Scenario:N", scale=alt.Scale(range=["#A6ACB4","#E8603C"]), legend=alt.Legend(labelColor="#ECE8E1", titleColor="#ECE8E1")),
             tooltip=["Month:Q","Debt Balance ($):Q","Scenario:N"],
-        ).properties(title=alt.TitleParams("Debt balance over 36 months", color="#A6ACB4", fontSize=11), height=180)
+        ).properties(title=alt.TitleParams("Debt balance — 36 months", color="#A6ACB4", fontSize=11), height=180)
         .configure_view(strokeOpacity=0, fill="#131720").configure(background="#0B0D10"))
 
         ch_sav = (alt.Chart(df_sav).mark_line(point=False).encode(
@@ -1017,10 +1047,10 @@ def render_step3() -> None:
     if S.messages and S.messages[-1]["role"]=="assistant" and not S.pending_send:
         _section_label("Follow-up suggestions", mt=".8rem")
         fc = st.columns(len(FOLLOWUP_SUGGESTIONS), gap="small")
-        for col, sug in zip(fc, FOLLOWUP_SUGGESTIONS):
+        for col, (label, question) in zip(fc, FOLLOWUP_SUGGESTIONS):
             with col:
                 st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
-                st.button(sug, key=f"fu_{sug[:18]}", use_container_width=True, on_click=_send_message, args=(sug,))
+                st.button(label, key=f"fu_{label[:18]}", use_container_width=True, on_click=_send_message, args=(question,))
                 st.markdown('</div>', unsafe_allow_html=True)
 
     # Chat input

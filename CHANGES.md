@@ -12,6 +12,7 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 4 | README: Built with Bob / Data sources / Responsible AI | 🔨 in progress | `paridhi_04_readme.png` |
 | 5 | Deployable to Streamlit Cloud (secrets) | ✅ done | `paridhi_05_deploy.png` |
 | 6 | Demo-mode fallback | ✅ done | `paridhi_05_deploy.png` |
+| 7 | Step 1 & Step 3 UI fixes | ✅ done | `paridhi_06_ui-fixes.png` |
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
@@ -78,6 +79,22 @@ Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 **Why:** Judges might open the link at any time. A friendly fallback is much better than a stack trace, and it shows the deterministic tools work on their own.
 
 **Checked by:** Bob session (`paridhi_05_deploy.png`).
+
+—
+
+## 7. Step 1 & Step 3 UI fixes ✅
+
+**What (done 2026-11-16, branch `paridhi/ui-fixes`):**
+- `data/profiles.json`: added `income_breakdown`, `expense_breakdown`, `savings_breakdown` to all 6 profiles, each summing exactly to the existing totals. Recent Graduate expenses $2,400 = housing $1,200 + food $500 + transport $300 + subs $100 + other $300.
+- `app/main.py _load_profile()`: reads breakdown fields from the profile (with sum-check fallback to old behaviour if absent or mismatched). Seeds an "Emergency fund" goal with target = 3 × monthly_expenses, saved = cash_savings (Recent Graduate: $7,200 / $1,500).
+- Goal summary changed from `st.text_input` → `st.text_area` (no more cut-off).
+- File uploader label updated to "Upload a saved profile (.json, a few KB)".
+- Follow-up chips shortened to fit without truncation: "+$100/mo debt payment?", "Income down 10%?", "Invest vs pay debt?".
+- Chart title shortened to "Debt balance — 36 months" to prevent clipping.
+
+**Health check unchanged:** Recent Graduate score=57, cash flow=+$350/mo, EF coverage=0.62 mo ✓
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_06_ui-fixes.png`).
 
 —
 
