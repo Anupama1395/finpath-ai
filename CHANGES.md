@@ -13,11 +13,13 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 5 | Deployable to Streamlit Cloud (secrets) | ✅ done | `paridhi_05_deploy.png` |
 | 6 | Demo-mode fallback | ✅ done | `paridhi_05_deploy.png` |
 | 7 | Step 1 & Step 3 UI fixes | ✅ done | `paridhi_06_ui-fixes.png` |
-| 8 | Step 0 landing screen (aurora bg, typing tagline, GIF, cards, Get Started) | ✅ done | `paridhi_07_hero.png` |
-| 9 | Landing screen polish: remove duplicate button, add ticker tape | ✅ done | `paridhi_07_hero.png` |
-| 10 | Ticker tape: live values from session state, no hard-coded numbers | ✅ done | `paridhi_07_hero.png` |
-| 11 | Landing screen: labels-only ticker, remove GIF, remove duplicate title | ✅ done | `paridhi_07_hero.png` |
-| 12 | Landing layout fixes: full-width iframe, no empty black gap, card 02 title shortened to "See the numbers" | ✅ done | `paridhi_07_hero.png` |
+| 8 | Step 0 landing screen (aurora bg, typing tagline, GIF, cards, Get Started) | ✅ done | `paridhi_08_hero.png` |
+| 9 | Landing screen polish: remove duplicate button, add ticker tape | ✅ done | `paridhi_08_hero.png` |
+| 10 | Ticker tape: live values from session state, no hard-coded numbers | ✅ done | `paridhi_08_hero.png` |
+| 11 | Landing screen: labels-only ticker, remove GIF, remove duplicate title | ✅ done | `paridhi_08_hero.png` |
+| 12 | Landing layout fixes: full-width iframe, no empty black gap, card 02 title shortened to "See the numbers" | ✅ done | `paridhi_08_hero.png` |
+| 13 | Landing screen: remove dashed wave/paths, add How-it-works strip, hero-question box, guardrails line, fill vertical space | ✅ done | `paridhi_09_remove-wave.png` |
+
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
@@ -197,3 +199,23 @@ No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/fin
 - Agent instructions in `agents/finpath_agent.yaml`: your rules are solid
 - Core math logic: only added validation, no formula changes
 - `FinPath AI — Conversation Log.pdf`: should we move it to `docs/` or remove it? Your call.
+
+## 13. Landing screen: remove wave, add content sections, fill vertical space ✅
+
+**What (done 2026-11-17, branch `paridhi/remove-wave`):** Targeted changes to `app/main.py` `render_step0()` only — no logic, finance functions, profile data, or Step 1/2/3 changes:
+
+1. **Removed SVG wave/path lines** — deleted the entire `<svg class="path-svg">` block (glow halo, dashed orange path, teal secondary, blue accent) and its `.path-svg` CSS rule. The paths were clipped at the viewport edges and looked broken. Dark navy `#07090D` background and aurora radial-gradient layer kept intact.
+
+2. **Added three new sections under the cards:**
+   - **How it works strip** — a three-cell horizontal bar: `1 — Pick a profile · 2 — Ask a question · 3 — See the numbers & try a what-if`
+   - **Hero-question example box** — teal left-border callout: *"Can I invest $300 more a month and still keep three months of emergency cash?"*
+   - **Guardrails line** — dim monospace text: *No real money · no real accounts · no product recommendations · Synthetic profiles only · Educational tool — not financial advice.*
+
+3. **Vertical spacing** — wrap uses `height:calc(100vh - 2rem)` + `justify-content:space-between` with `padding-bottom:4rem` on the wrap so the two flex blocks (hero copy + bottom section) distribute the slack evenly (~117px above cards, ~98px below guardrails). Ticker stays `position:fixed; bottom:0` and is always visible at the bottom of the viewport. Iframe height set to `820px`. No page scrolling.
+
+No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/finance.py` unchanged.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_09_remove-wave.png`).
+
+—
+

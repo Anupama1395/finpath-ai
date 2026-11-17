@@ -776,19 +776,16 @@ html,body{{
   background:linear-gradient(160deg,rgba(7,9,13,.30) 0%,rgba(7,9,13,.60) 60%,rgba(7,9,13,.82) 100%);
 }}
 
-/* ── SVG path background ── */
-.path-svg{{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;opacity:.85}}
-
 /* ── Main content ── */
 .wrap{{
   position:relative;z-index:10;
   width:100%;max-width:980px;margin:0 auto;
-  padding:3.2rem 2.8rem 1rem;
+  padding:2.4rem 2.8rem 4rem;
   box-sizing:border-box;
-  min-height:calc(100vh - 2rem);
+  height:calc(100vh - 2rem);
   display:flex;flex-direction:column;
+  justify-content:space-between;
 }}
-.wrap > div:last-child{{margin-top:auto;padding-bottom:2rem}}
 
 /* Title */
 h1{{
@@ -818,7 +815,7 @@ h1 span{{color:var(--orange)}}
 .sub{{
   font-family:var(--mono);font-size:.72rem;line-height:1.65;
   color:var(--muted);max-width:640px;
-  margin-bottom:2rem;
+  margin-bottom:1.8rem;
 }}
 
 /* CTA button */
@@ -831,14 +828,14 @@ h1 span{{color:var(--orange)}}
   border:none;border-radius:8px;
   cursor:pointer;
   transition:background .15s,transform .1s;
-  margin-bottom:2.4rem;
+  margin-bottom:0;
   text-decoration:none;
 }}
 .cta:hover{{background:var(--orange2);transform:translateY(-1px)}}
 .cta:active{{transform:translateY(0)}}
 
 /* Cards */
-.cards{{display:flex;gap:.8rem;flex-wrap:nowrap;margin-bottom:1.4rem}}
+.cards{{display:flex;gap:.8rem;flex-wrap:nowrap;margin-bottom:1.6rem}}
 .card{{
   flex:1;min-width:0;
   padding:1rem 1.1rem;
@@ -860,12 +857,43 @@ h1 span{{color:var(--orange)}}
   font-family:var(--mono);font-size:.6rem;line-height:1.6;color:var(--muted);
 }}
 
-/* Disclaimer */
-.disclaim{{
+/* How it works strip */
+.how-strip{{
+  display:flex;gap:0;margin-bottom:1.4rem;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:10px;overflow:hidden;
+}}
+.how-step{{
+  flex:1;padding:.65rem .9rem;
+  background:rgba(19,23,32,.60);
+  display:flex;align-items:center;gap:.6rem;
+}}
+.how-step+.how-step{{border-left:1px solid rgba(255,255,255,.07);}}
+.how-num{{
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;
+  color:var(--orange);flex-shrink:0;
+}}
+.how-text{{font-family:var(--mono);font-size:.62rem;color:var(--muted);line-height:1.4;}}
+
+/* Hero question box */
+.hero-q{{
+  margin-bottom:1.2rem;
+  padding:.8rem 1.1rem;
+  background:rgba(45,180,160,.06);
+  border:1px solid rgba(45,180,160,.18);
+  border-left:3px solid var(--teal);
+  border-radius:0 8px 8px 0;
+  font:italic 400 .95rem/1.5 var(--serif);
+  color:var(--text);
+}}
+
+/* Guardrails line */
+.guardrails{{
   font-family:var(--mono);font-size:.56rem;
   color:var(--dim);letter-spacing:.04em;
-  margin-top:.6rem;
+  margin-top:0;
   margin-bottom:.5rem;
+  line-height:1.6;
 }}
 
 /* ── Ticker tape ── */
@@ -903,28 +931,6 @@ h1 span{{color:var(--orange)}}
 <div class="aurora"></div>
 <div class="overlay"></div>
 
-<svg class="path-svg" viewBox="0 0 1400 800" preserveAspectRatio="xMidYMid slice"
-     xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <filter id="gblur"><feGaussianBlur stdDeviation="9"/></filter>
-  </defs>
-  <!-- glow halo -->
-  <path d="M-80,480 C120,430 220,210 450,245 S680,350 860,275 S1100,90 1480,195"
-        fill="none" stroke="#E8603C" stroke-width="8" opacity=".15" filter="url(#gblur)"/>
-  <!-- crisp dashed orange path -->
-  <path d="M-80,480 C120,430 220,210 450,245 S680,350 860,275 S1100,90 1480,195"
-        fill="none" stroke="#E8603C" stroke-width="1.8" opacity=".55"
-        stroke-dasharray="10 7"/>
-  <!-- teal secondary -->
-  <path d="M-80,590 C180,555 380,390 560,420 S800,520 1060,440 S1300,330 1500,355"
-        fill="none" stroke="#2DB4A0" stroke-width="1.3" opacity=".20"
-        stroke-dasharray="6 9"/>
-  <!-- blue accent -->
-  <path d="M200,750 C380,710 520,620 680,600 S880,560 1050,490 S1280,400 1500,420"
-        fill="none" stroke="#5B9BD5" stroke-width="1" opacity=".12"
-        stroke-dasharray="4 10"/>
-</svg>
-
 <div class="wrap">
 
   <!-- Top block: brand + hero copy + CTA -->
@@ -947,8 +953,8 @@ and see what changes if you try something different.</p>
     <button class="cta" id="cta-btn" onclick="handleStart()">Get Started &rarr;</button>
   </div>
 
-  <!-- Bottom block: cards + disclaimer anchored to bottom -->
-  <div>
+  <!-- Bottom block: cards + new sections anchored to bottom -->
+  <div style="padding-bottom:1.6rem">
     <!-- 3 cards -->
     <div class="cards">
       <div class="card">
@@ -968,7 +974,31 @@ and see what changes if you try something different.</p>
       </div>
     </div>
 
-    <div class="disclaim">Educational tool &middot; Not financial advice &middot; All projections are illustrative only.</div>
+    <!-- How it works strip -->
+    <div class="how-strip">
+      <div class="how-step">
+        <span class="how-num">1&nbsp;&mdash;</span>
+        <span class="how-text">Pick a profile</span>
+      </div>
+      <div class="how-step">
+        <span class="how-num">2&nbsp;&mdash;</span>
+        <span class="how-text">Ask a question</span>
+      </div>
+      <div class="how-step">
+        <span class="how-num">3&nbsp;&mdash;</span>
+        <span class="how-text">See the numbers &amp; try a what-if</span>
+      </div>
+    </div>
+
+    <!-- Hero question example -->
+    <div class="hero-q">
+      &ldquo;Can I invest $300 more a month and still keep three months of emergency cash?&rdquo;
+    </div>
+
+    <!-- Guardrails -->
+    <div class="guardrails">
+      No real money &middot; no real accounts &middot; no product recommendations &middot; Synthetic profiles only &middot; Educational tool &mdash; not financial advice.
+    </div>
   </div>
 
 </div>
@@ -1017,7 +1047,7 @@ function handleStart(){{
 </html>"""
 
     # Render the full landing page — sized to fill the viewport without scrolling
-    components.html(html_page, height=620, scrolling=False)
+    components.html(html_page, height=820, scrolling=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
