@@ -19,6 +19,7 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 11 | Landing screen: labels-only ticker, remove GIF, remove duplicate title | ✅ done | `paridhi_08_hero.png` |
 | 12 | Landing layout fixes: full-width iframe, no empty black gap, card 02 title shortened to "See the numbers" | ✅ done | `paridhi_08_hero.png` |
 | 13 | Landing screen: remove dashed wave/paths, add How-it-works strip, hero-question box, guardrails line, fill vertical space | ✅ done | `paridhi_09_remove-wave.png` |
+| 14 | Fix Streamlit Cloud deploy crash: pin `ibm-watsonx-orchestrate==2.20.0`, add missing `ibm-cloud-sdk-core==3.28.2` to requirements.txt | ✅ done | — |
 
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
@@ -219,3 +220,19 @@ No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/fin
 
 —
 
+
+## 14. Fix Streamlit Cloud deploy crash ✅
+
+**What (done 2026-11-17, branch `paridhi/fix-requirements`):** Two changes to `requirements.txt` only — no app logic, calculations, or landing touched:
+
+1. **Pinned `ibm-watsonx-orchestrate==2.20.0`** — the entry existed but had no version, so Streamlit Cloud could resolve a different (incompatible) release. The version pin matches what works locally (confirmed via `pip show` in the project venv).
+
+2. **Added `ibm-cloud-sdk-core==3.28.2`** — this package is imported directly in `app/api_client.py` line 98 (`from ibm_cloud_sdk_core.authenticators import IAMAuthenticator`) but was not listed in `requirements.txt` at all. Its absence caused the `ModuleNotFoundError` that crashed the cloud deploy. Version matches the venv.
+
+No other missing imports were found: `streamlit`, `altair`, `pandas`, and `python-dotenv` were already listed and correct.
+
+**Why:** Streamlit Community Cloud installs exactly what `requirements.txt` says. `ibm-cloud-sdk-core` is not a declared dependency of `ibm-watsonx-orchestrate`'s wheel on PyPI, so it was never pulled in transitively on the cloud even though it happened to be present locally.
+
+**Checked by:** 217 tests passed (`pytest tests/ --ignore=tests/smoke_test.py`). No app logic, calculations, or landing changed.
+
+—
