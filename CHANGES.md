@@ -236,3 +236,4 @@ No other missing imports were found: `streamlit`, `altair`, `pandas`, and `pytho
 **Checked by:** 217 tests passed (`pytest tests/ --ignore=tests/smoke_test.py`). No app logic, calculations, or landing changed.
 
 —
+
