@@ -21,6 +21,7 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 13 | Landing screen: remove dashed wave/paths, add How-it-works strip, hero-question box, guardrails line, fill vertical space | ✅ done | `paridhi_09_remove-wave.png` |
 | 14 | Fix Streamlit Cloud deploy crash: pin `ibm-watsonx-orchestrate==2.20.0`, add missing `ibm-cloud-sdk-core==3.28.2` to requirements.txt | ✅ done | — |
 | 15 | Log full exception on agent connection failure (`logger.exception` instead of `logger.debug`) so Streamlit Cloud logs show real IAM/URL/agent errors | ✅ done | — |
+| 16 | Sync `app/requirements.txt` with root: add `ibm-watsonx-orchestrate==2.20.0`, `ibm-cloud-sdk-core==3.28.2`, `python-dotenv`; align version floors for `streamlit`, `altair`, `pandas` — fixes Streamlit Cloud picking wrong file and crashing with `ModuleNotFoundError` | ✅ done | — |
 
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
@@ -256,5 +257,24 @@ logger.exception("ADK call failed")
 **Why:** When the deploy crashed, the only observable symptom was the generic `RuntimeError("Could not reach FinPath AI…")` bubble in the UI. The root cause — expired IAM token, mistyped `ORCHESTRATE_INSTANCE_URL`, agent name mismatch — was hidden in a DEBUG-level log that the cloud never surfaces. Switching to `logger.exception` makes the real failure visible immediately in the Streamlit Cloud "Logs" tab without any configuration change.
 
 **Checked by:** 217 tests passed (`pytest tests/ --ignore=tests/smoke_test.py`). No other logic changed.
+
+—
+
+## 16. Sync `app/requirements.txt` with root ✅
+
+**What (done 2026-11-17, branch `paridhi/fix-app-requirements`):** `app/requirements.txt` was a stale three-line stub that Streamlit Cloud preferred over the root `requirements.txt`. Replaced it with an exact copy of the root file — same packages, same version pins:
+
+```
+streamlit>=1.32.0
+altair>=5.0.0
+pandas>=2.0.0
+ibm-watsonx-orchestrate==2.20.0
+ibm-cloud-sdk-core==3.28.2
+python-dotenv
+```
+
+**Why:** Streamlit Cloud's build log warned *"More than one requirements file detected. Used: /mount/src/finpath-ai/app/requirements.txt"* and chose `app/requirements.txt` over the root one. That file listed only `streamlit`, `altair`, and `pandas`, so `ibm-watsonx-orchestrate` and `ibm-cloud-sdk-core` were never installed, causing `ModuleNotFoundError: No module named 'ibm_watsonx_orchestrate'` on startup.
+
+**Checked by:** 217 tests passed (`pytest tests/ --ignore=tests/smoke_test.py`). No app logic, calculations, or landing touched.
 
 —
