@@ -11,6 +11,7 @@ Steps:
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import logging
@@ -174,7 +175,7 @@ def _default_goals() -> list[dict]:
 
 def _init_state() -> None:
     defaults: dict = {
-        "step":            1,
+        "step":            0,
         "profile":         None,
         # totals (derived from breakdown on save, or entered directly)
         "income":          5000,
@@ -367,6 +368,85 @@ def _headroom() -> float:
         return float(r.get("free_cash", 0))
     except Exception:
         return max(0.0, S.income - S.expenses - S.debt_payment - S.savings_contrib)
+
+
+def _ticker_items() -> list[tuple[str, str, str]]:
+    """Return (label, value_str, hex_colour) tuples derived from current session state.
+
+    All values come from S.* (session state) + local finance functions — never
+    hard-coded.  Called only on render_step0(); recomputed on every Streamlit
+    rerun so values always reflect the selected profile.
+    """
+    TEAL   = "#2DB4A0"
+    ORANGE = "#E8603C"
+    GOLD   = "#D4A84B"
+
+    items: list[tuple[str, str, str]] = []
+    if S.income <= 0:
+        return items
+
+    # ── Cash flow ──
+    cf = S.income - S.expenses - S.debt_payment - S.savings_contrib
+    cf_col = TEAL if cf >= 0 else ORANGE
+    cf_str = f"+${cf:,.0f}/mo" if cf >= 0 else f"-${abs(cf):,.0f}/mo"
+    items.append(("Cash Flow", cf_str, cf_col))
+
+    # ── Monthly savings contribution ──
+    if S.savings_contrib > 0:
+        items.append(("Savings", f"+${S.savings_contrib:,.0f}/mo", TEAL))
+
+    # ── Savings rate ──
+    sr = S.savings_contrib / S.income * 100
+    sr_col = TEAL if sr >= 10 else (GOLD if sr >= 5 else ORANGE)
+    items.append(("Savings Rate", f"{sr:.0f}%", sr_col))
+
+    # ── Debt-to-income ──
+    if S.income > 0:
+        dti = S.debt_payment / S.income * 100
+        dti_col = TEAL if dti <= 15 else (GOLD if dti <= 28 else ORANGE)
+        items.append(("Debt-to-Income", f"{dti:.0f}%", dti_col))
+
+    # ── Emergency fund coverage ──
+    if S.expenses > 0:
+        ef_mo = S.savings / S.expenses
+        ef_col = TEAL if ef_mo >= 3 else (GOLD if ef_mo >= 1 else ORANGE)
+        items.append(("Emergency Fund", f"{ef_mo:.1f} mo", ef_col))
+
+    # ── EF target (3 × expenses) ──
+    if S.expenses > 0:
+        ef_target = S.expenses * 3
+        items.append(("EF Target", f"${ef_target:,.0f}", GOLD))
+
+    # ── Debt balance ──
+    if S.debt_bal > 0:
+        items.append(("Debt Balance", f"${S.debt_bal:,.0f} @ {S.debt_rate:.0f}%", ORANGE))
+
+    # ── Debt payoff months ──
+    if S.debt_bal > 0 and S.debt_payment > 0 and _LOCAL_MATH:
+        try:
+            sched = _debt_schedule(S.debt_bal, S.debt_payment, S.debt_rate / 100, 360)
+            payoff = next((i + 1 for i, v in enumerate(sched) if v == 0), None)
+            if payoff:
+                po_col = TEAL if payoff <= 36 else (GOLD if payoff <= 60 else ORANGE)
+                items.append(("Debt Payoff", f"{payoff} mo", po_col))
+        except Exception:
+            pass
+
+    return items
+
+
+def _ticker_html(items: list[tuple[str, str, str]]) -> str:
+    """Render one pass of ticker items as HTML spans (caller duplicates for loop)."""
+    parts = []
+    for label, val, col in items:
+        parts.append(
+            f'<span class="tick-item">'
+            f'<span class="tick-label">{label}</span>'
+            f'<span class="tick-val" style="color:{col}">{val}</span>'
+            f'</span>'
+            f'<span class="tick-sep">&bull;</span>'
+        )
+    return "".join(parts)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -600,6 +680,345 @@ def _load_profile_from_dict(d: dict) -> None:
     if "use_multi_debt" in d:
         S.use_multi_debt = d["use_multi_debt"]
     S.profile = None  # mark as custom
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 0 — LANDING
+# ─────────────────────────────────────────────────────────────────────────────
+def _gif_data_uri() -> str:
+    """Return the dot_path.gif as a base64 data URI so it loads on Streamlit Cloud."""
+    gif_path = ROOT / "assets" / "dot_path.gif"
+    if gif_path.exists():
+        b64 = base64.b64encode(gif_path.read_bytes()).decode()
+        return f"data:image/gif;base64,{b64}"
+    return ""
+
+def render_step0() -> None:
+    import streamlit.components.v1 as components
+
+    # ── Reset block-container padding so the iframe fills width ──────────────
+    st.markdown("""
+<style>
+/* Match outer Streamlit background to the landing iframe so any gap is invisible */
+.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{
+  background:#07090D!important;
+}
+.block-container{
+  padding:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+/* Collapse all vertical gaps around the iframe */
+[data-testid="stVerticalBlock"]{gap:0!important}
+[data-testid="stVerticalBlock"] > div{padding:0!important;margin:0!important}
+iframe{display:block!important;border:0!important;margin:0!important}
+</style>
+""", unsafe_allow_html=True)
+
+    # ── Detect query-param navigation from the in-iframe CTA ─────────────────
+    if st.query_params.get("go") == "1":
+        st.query_params.clear()
+        _go(1)
+        return
+
+    # ── Ticker: labels only, no numbers ──────────────────────────────────────
+    _TICKER_LABELS = [
+        ("SAVINGS",        "#2DB4A0"),
+        ("DEBT",           "#E8603C"),
+        ("EMERGENCY FUND", "#2DB4A0"),
+        ("GOALS",          "#D4A84B"),
+        ("CASH FLOW",      "#2DB4A0"),
+        ("WHAT-IF",        "#D4A84B"),
+    ]
+    _one_pass = "".join(
+        f'<span class="tick-item" style="color:{c}">{l}</span>'
+        f'<span class="tick-sep">&bull;</span>'
+        for l, c in _TICKER_LABELS
+    )
+    ticker_inner = _one_pass + _one_pass    # duplicate for seamless CSS loop
+
+    # ── Entire landing page rendered as a self-contained components.html ─────
+    # height is set large enough to show all content without a scrollbar.
+    # The "Get Started" button inside posts a message to the parent; a tiny
+    # hidden st.button below listens for the query-param trick via st.query_params.
+    html_page = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+:root{{
+  --orange:#E8603C;--orange2:#C94E2C;
+  --teal:#2DB4A0;
+  --text:#ECE8E1;--muted:#A6ACB4;--dim:#6B737D;
+  --serif:'Georgia',serif;
+  --mono:'Courier New',monospace;
+}}
+html,body{{
+  width:100%;height:100%;
+  background:#07090D;
+  color:var(--text);
+  font-family:var(--sans,system-ui,sans-serif);
+  overflow-x:hidden;
+}}
+
+/* ── Aurora layer ── */
+.aurora{{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 65% 50% at 15% 25%, rgba(232,96,60,.20) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 45% at 82% 65%, rgba(45,180,160,.14) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 55% at 50% 5%,  rgba(91,155,213,.10) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 15%, rgba(212,168,75,.07) 0%, transparent 55%);
+}}
+/* Dark gradient overlay so text is always readable */
+.overlay{{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(160deg,rgba(7,9,13,.30) 0%,rgba(7,9,13,.60) 60%,rgba(7,9,13,.82) 100%);
+}}
+
+/* ── SVG path background ── */
+.path-svg{{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;opacity:.85}}
+
+/* ── Main content ── */
+.wrap{{
+  position:relative;z-index:10;
+  width:100%;max-width:980px;margin:0 auto;
+  padding:3.2rem 2.8rem 1rem;
+  box-sizing:border-box;
+  min-height:calc(100vh - 2rem);
+  display:flex;flex-direction:column;
+}}
+.wrap > div:last-child{{margin-top:auto;padding-bottom:2rem}}
+
+/* Title */
+h1{{
+  font:italic 400 3.4rem/.95 var(--serif);
+  letter-spacing:-.03em;
+  color:var(--text);
+  margin-bottom:.9rem;
+}}
+h1 span{{color:var(--orange)}}
+
+/* Tagline / typing */
+.tagline-wrap{{
+  font:italic 400 1.3rem/1.2 var(--serif);
+  color:var(--orange);
+  min-height:1.7rem;
+  margin-bottom:.8rem;
+}}
+.cursor{{
+  display:inline-block;width:2px;height:1.1em;
+  background:var(--orange);vertical-align:text-bottom;
+  margin-left:3px;
+  animation:blink .7s step-end infinite;
+}}
+@keyframes blink{{0%,100%{{opacity:1}}50%{{opacity:0}}}}
+
+/* Sub-line */
+.sub{{
+  font-family:var(--mono);font-size:.72rem;line-height:1.65;
+  color:var(--muted);max-width:640px;
+  margin-bottom:2rem;
+}}
+
+/* CTA button */
+.cta{{
+  display:inline-block;
+  background:var(--orange);color:#fff;
+  font-family:var(--mono);font-size:.82rem;font-weight:700;
+  letter-spacing:.04em;
+  padding:.65rem 2rem;
+  border:none;border-radius:8px;
+  cursor:pointer;
+  transition:background .15s,transform .1s;
+  margin-bottom:2.4rem;
+  text-decoration:none;
+}}
+.cta:hover{{background:var(--orange2);transform:translateY(-1px)}}
+.cta:active{{transform:translateY(0)}}
+
+/* Cards */
+.cards{{display:flex;gap:.8rem;flex-wrap:nowrap;margin-bottom:1.4rem}}
+.card{{
+  flex:1;min-width:0;
+  padding:1rem 1.1rem;
+  background:rgba(19,23,32,.78);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:12px;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}}
+.card-num{{
+  font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--orange);margin-bottom:.4rem;
+}}
+.card-title{{
+  font:italic 400 .95rem/1.25 var(--serif);
+  color:var(--text);margin-bottom:.35rem;
+}}
+.card-body{{
+  font-family:var(--mono);font-size:.6rem;line-height:1.6;color:var(--muted);
+}}
+
+/* Disclaimer */
+.disclaim{{
+  font-family:var(--mono);font-size:.56rem;
+  color:var(--dim);letter-spacing:.04em;
+  margin-top:.6rem;
+  margin-bottom:.5rem;
+}}
+
+/* ── Ticker tape ── */
+.ticker-wrap{{
+  position:fixed;bottom:0;left:0;right:0;
+  z-index:50;
+  background:rgba(7,9,13,.92);
+  border-top:1px solid rgba(232,96,60,.20);
+  overflow:hidden;
+  height:2rem;
+  display:flex;align-items:center;
+}}
+.ticker-track{{
+  display:flex;
+  white-space:nowrap;
+  animation:ticker-scroll 38s linear infinite;
+  will-change:transform;
+}}
+.ticker-track:hover{{animation-play-state:paused}}
+@keyframes ticker-scroll{{
+  0%{{transform:translateX(0)}}
+  100%{{transform:translateX(-50%)}}
+}}
+.tick-item{{
+  display:inline-flex;align-items:center;gap:.45rem;
+  padding:0 1.6rem;
+  font-family:'Courier New',monospace;font-size:.6rem;letter-spacing:.08em;
+}}
+.tick-label{{color:rgba(236,232,225,.55);text-transform:uppercase}}
+.tick-val{{font-weight:700}}
+.tick-sep{{color:rgba(255,255,255,.12);margin:0 .2rem}}
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+<div class="overlay"></div>
+
+<svg class="path-svg" viewBox="0 0 1400 800" preserveAspectRatio="xMidYMid slice"
+     xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="gblur"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <!-- glow halo -->
+  <path d="M-80,480 C120,430 220,210 450,245 S680,350 860,275 S1100,90 1480,195"
+        fill="none" stroke="#E8603C" stroke-width="8" opacity=".15" filter="url(#gblur)"/>
+  <!-- crisp dashed orange path -->
+  <path d="M-80,480 C120,430 220,210 450,245 S680,350 860,275 S1100,90 1480,195"
+        fill="none" stroke="#E8603C" stroke-width="1.8" opacity=".55"
+        stroke-dasharray="10 7"/>
+  <!-- teal secondary -->
+  <path d="M-80,590 C180,555 380,390 560,420 S800,520 1060,440 S1300,330 1500,355"
+        fill="none" stroke="#2DB4A0" stroke-width="1.3" opacity=".20"
+        stroke-dasharray="6 9"/>
+  <!-- blue accent -->
+  <path d="M200,750 C380,710 520,620 680,600 S880,560 1050,490 S1280,400 1500,420"
+        fill="none" stroke="#5B9BD5" stroke-width="1" opacity=".12"
+        stroke-dasharray="4 10"/>
+</svg>
+
+<div class="wrap">
+
+  <!-- Top block: brand + hero copy + CTA -->
+  <div>
+    <p style="font-family:'Courier New',monospace;font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#6B737D;margin:0 0 1.6rem">IBM SkillsBuild &middot; Banking &amp; Financial Services</p>
+
+    <!-- Title -->
+    <h1>FinPath <span>AI</span></h1>
+
+    <!-- Typing tagline -->
+    <div class="tagline-wrap">
+      <span id="typed"></span><span class="cursor" id="cursor"></span>
+    </div>
+
+    <!-- Sub-line -->
+    <p class="sub">Ask a money question in plain English, get a clear answer with the numbers —
+and see what changes if you try something different.</p>
+
+    <!-- Get Started CTA -->
+    <button class="cta" id="cta-btn" onclick="handleStart()">Get Started &rarr;</button>
+  </div>
+
+  <!-- Bottom block: cards + disclaimer anchored to bottom -->
+  <div>
+    <!-- 3 cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-num">01</div>
+        <div class="card-title">Ask a money question</div>
+        <div class="card-body">Type anything in plain English — &ldquo;Can I save $200 more?&rdquo; or &ldquo;How long to pay off my debt?&rdquo;</div>
+      </div>
+      <div class="card">
+        <div class="card-num">02</div>
+        <div class="card-title">See the numbers</div>
+        <div class="card-body">Every answer is backed by a verified calculation &mdash; debt schedule, savings projection, health score.</div>
+      </div>
+      <div class="card">
+        <div class="card-num">03</div>
+        <div class="card-title">Try a what-if</div>
+        <div class="card-body">Slide income or extra payments and watch your projections update in real time.</div>
+      </div>
+    </div>
+
+    <div class="disclaim">Educational tool &middot; Not financial advice &middot; All projections are illustrative only.</div>
+  </div>
+
+</div>
+
+<!-- Ticker tape — values injected server-side from session state -->
+<div class="ticker-wrap" aria-hidden="true">
+  <div class="ticker-track" id="ticker">
+    {ticker_inner}
+  </div>
+</div>
+
+<script>
+// ── Typing animation ──────────────────────────────────────────────────────
+(function(){{
+  var TEXT = "Every dollar has a path. Find yours.";
+  var HOLD=1800, T=62, D=36;
+  var el = document.getElementById('typed');
+  var i=0, del=false;
+  function tick(){{
+    if(!del){{
+      el.textContent = TEXT.slice(0,++i);
+      if(i===TEXT.length){{del=true;setTimeout(tick,HOLD);return;}}
+    }}else{{
+      el.textContent = TEXT.slice(0,--i);
+      if(i===0){{del=false;setTimeout(tick,500);return;}}
+    }}
+    setTimeout(tick, del?D:T);
+  }}
+  tick();
+}})();
+
+// ── CTA: set query param on parent so Streamlit navigates to step 1 ───────
+function handleStart(){{
+  try{{
+    var url = new URL(window.parent.location.href);
+    url.searchParams.set('go','1');
+    window.parent.history.replaceState(null,'',url.toString());
+    // Trigger a Streamlit rerun by dispatching a storage event (Streamlit polls)
+    window.parent.dispatchEvent(new Event('popstate'));
+  }}catch(e){{}}
+  // Fallback: scroll down so the user sees the Streamlit button (should not be needed)
+  try{{ window.parent.scrollTo({{top:99999,behavior:'smooth'}}); }}catch(e){{}}
+}}
+</script>
+</body>
+</html>"""
+
+    # Render the full landing page — sized to fill the viewport without scrolling
+    components.html(html_page, height=620, scrolling=False)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 1 — PROFILE
@@ -1112,6 +1531,7 @@ def render_step3() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # ROUTER
 # ─────────────────────────────────────────────────────────────────────────────
-if   S.step == 1: render_step1()
+if   S.step == 0: render_step0()
+elif S.step == 1: render_step1()
 elif S.step == 2: render_step2()
 elif S.step == 3: render_step3()

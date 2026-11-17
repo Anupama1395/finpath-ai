@@ -13,6 +13,11 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 5 | Deployable to Streamlit Cloud (secrets) | ✅ done | `paridhi_05_deploy.png` |
 | 6 | Demo-mode fallback | ✅ done | `paridhi_05_deploy.png` |
 | 7 | Step 1 & Step 3 UI fixes | ✅ done | `paridhi_06_ui-fixes.png` |
+| 8 | Step 0 landing screen (aurora bg, typing tagline, GIF, cards, Get Started) | ✅ done | `paridhi_07_hero.png` |
+| 9 | Landing screen polish: remove duplicate button, add ticker tape | ✅ done | `paridhi_07_hero.png` |
+| 10 | Ticker tape: live values from session state, no hard-coded numbers | ✅ done | `paridhi_07_hero.png` |
+| 11 | Landing screen: labels-only ticker, remove GIF, remove duplicate title | ✅ done | `paridhi_07_hero.png` |
+| 12 | Landing layout fixes: full-width iframe, no empty black gap, card 02 title shortened to "See the numbers" | ✅ done | `paridhi_07_hero.png` |
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
@@ -95,6 +100,96 @@ Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 **Health check unchanged:** Recent Graduate score=57, cash flow=+$350/mo, EF coverage=0.62 mo ✓
 
 **Checked by:** 217 tests passed. Bob session (`paridhi_06_ui-fixes.png`).
+
+—
+
+## 8. Step 0 landing screen ✅
+
+**What (done 2026-11-17, branch `paridhi/hero`):** Replaced the inline hero block with a full separate **Step 0** landing screen shown before the profile step. Changes:
+
+- **`app/main.py`**: Added `render_step0()` using `streamlit.components.v1.components.html` to render a self-contained HTML page inside a tall iframe. Default `S.step` changed from `1` → `0`. Router extended with `if S.step == 0: render_step0()`. Hero block removed from `render_step1()`.
+- **`assets/dot_path.gif`**: New 40-frame, 10.9 KB animated GIF (320×160 px) showing a glowing orange dot travelling along a winding sine-wave path, generated with Pillow. Embedded as a base64 data URI so it loads on Streamlit Cloud without static-file serving.
+
+Landing screen features:
+- **Dark navy background** (`#07090D`) with four radial-gradient aurora blobs (orange, teal, blue, gold)
+- **SVG winding path** — dashed orange primary + teal secondary + blue accent, all decorative
+- **Dark gradient overlay** so text stays readable against the aurora
+- **FinPath AI** title (4.2 rem serif italic), "AI" in orange
+- **Looping typing animation** — "Every dollar has a path. Find yours." types in, holds 1.8 s, deletes, loops; blinking orange cursor
+- **Sub-line** in monospace muted text
+- **Get Started →** CTA button (orange, large) — single button inside the iframe
+- **Animated GIF** with label "Your dollars, finding their path"
+- **3 rounded cards** — Ask a money question / See the numbers & trade-offs / Try a what-if
+- **Disclaimer** footer
+- Steps 1–3 unchanged — no background image, full readability preserved
+
+No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/finance.py` unchanged.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_07_hero.png`).
+
+—
+
+## 9. Landing screen polish ✅
+
+**What (done 2026-11-17, branch `paridhi/hero`):** Two targeted fixes to the Step 0 landing screen:
+
+1. **Removed duplicate Get Started button** — the previous implementation rendered a `st.button` below the `components.html` iframe as a fallback navigation trigger, which appeared as a second "GET STARTED →" floating below the landing panel. Removed the duplicate entirely. The in-iframe CTA now navigates by setting `?go=1` on the parent URL and dispatching a `popstate` event; Streamlit detects `st.query_params.get("go") == "1"` on rerun and calls `_go(1)`. Only one button remains.
+
+2. **Ticker tape strip** — Added a `position:fixed; bottom:0` ticker at the bottom of the iframe, `2rem` tall with a subtle `rgba(7,9,13,.82)` background and a thin `rgba(232,96,60,.18)` top border. Ten illustrative items scroll at 38 s/cycle (slow, unobtrusive): **Savings · Emergency Fund · Debt · Goals · Cash Flow · Savings Rate · Debt-to-Income · Payoff · What-if** — values coloured teal (healthy), orange (attention), or gold (moderate). No real tickers, no stock prices, no red/green trading charts. The track is duplicated in HTML for a seamless CSS loop. Hovering pauses the animation.
+
+No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/finance.py` unchanged.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_07_hero.png`).
+
+—
+
+## 10. Ticker tape — live values from session state ✅
+
+**What (done 2026-11-17, branch `paridhi/hero`):** Replaced all hard-coded ticker numbers with values computed dynamically from `S.*` (Streamlit session state) on every rerun.
+
+- Added `_ticker_items()` helper (after `_headroom()` in `app/main.py`) — computes 7–8 items from live session state using the same logic as the health card: cash flow, savings, savings rate, debt-to-income, emergency fund coverage, EF target, debt balance, and debt payoff months (via `_debt_schedule`). Items are skipped if the underlying value is zero (e.g. no debt). Colours follow the same thresholds: teal = healthy, gold = moderate, orange = attention.
+- Added `_ticker_html()` helper — renders one pass of items as HTML spans; called twice to build `ticker_inner` (duplicated track for seamless CSS loop).
+- `render_step0()` calls `_ticker_items()` / `_ticker_html()` before building `html_page`, then injects `{ticker_inner}` into the f-string — server-side substitution, no JavaScript required.
+- Changed ticker layout from `position:fixed;bottom:0` → `position:relative` with `body{display:flex;flex-direction:column}` and `.wrap{flex:1}`, so the ticker is a natural document footer visible at the bottom of the iframe. Iframe height bumped to `920`.
+
+Default session state values shown (no profile selected on Step 0):
+`Cash Flow +$1,500/mo · Savings +$200/mo · Savings Rate 4% · Debt-to-Income 6% · Emergency Fund 2.0 mo · EF Target $9,000 · Debt Balance $10,000 @ 6% · Debt Payoff 37 mo`
+
+No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/finance.py` unchanged.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_07_hero.png`).
+
+—
+
+## 11. Landing screen cleanup ✅
+
+**What (done 2026-11-17, branch `paridhi/hero`):** Three targeted removals/simplifications — no logic, profile data, or Step 1–3 changes:
+
+1. **Ticker labels only** — removed all numbers from the ticker. The six items now scroll as plain labels: `SAVINGS · DEBT · EMERGENCY FUND · GOALS · CASH FLOW · WHAT-IF`. No invented numbers, no session-state lookup needed. Removed `_ticker_items()` / `_ticker_html()` calls from `render_step0()`.
+
+2. **GIF removed** — deleted the `<div class="gif-row">` block and `.gif-row` / `.gif-label` CSS. The dashed SVG path lines across the background serve the same visual purpose.
+
+3. **Duplicate title removed** — deleted the `<div class="wm">` wordmark block (the italic `FINPATH` / `PATH` logo) and its CSS (`.wm`, `.wm-logo`, `.wm-sub`). "FinPath AI" as the `<h1>` is the single title. The IBM SkillsBuild sub-caption is kept as an inline `<p>` above the `<h1>`.
+
+Also: outer Streamlit page background forced to `#07090D` to match the iframe so any residual gap is invisible; screenshot taken at viewport height 670 (exact content height) to confirm zero gap.
+
+No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/finance.py` unchanged.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_07_hero.png`).
+
+—
+
+## 12. Landing layout fixes ✅
+
+**What (done 2026-11-17, branch `paridhi/hero`):** Two targeted layout fixes to the Step 0 landing screen, in a single change to `app/main.py`:
+
+1. **Full-width, no empty gap** — the iframe previously had wide Streamlit margins (centered 860px block-container) and a large black empty area below the disclaimer before the ticker. Fixed by: (a) `.wrap` now uses `min-height:calc(100vh - 2rem)`, `display:flex`, `flex-direction:column` — the bottom block (cards + disclaimer) gets `margin-top:auto` so it always pins flush to the ticker with no dead space; (b) `.wrap` max-width widened to 980px with side padding 2.8rem for a full-bleed look; (c) ticker changed to `position:fixed; bottom:0` for a guaranteed bottom anchor regardless of content height; (d) vertical spacing redistributed across the top padding, h1 margin, tagline, sub-line, and CTA margin so all elements fit at a 1280×620 laptop viewport without scrolling. Cards kept `flex-wrap:nowrap` so they always stay side-by-side.
+
+2. **Card 02 title** — shortened from `"See the numbers & trade-offs"` to `"See the numbers"`. The card body already says *"Every answer is backed by a verified calculation"*, so "trade-offs" was redundant and caused an awkward two-word wrap at narrow widths.
+
+No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/finance.py` unchanged.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_07_hero.png`).
 
 —
 
