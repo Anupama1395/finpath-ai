@@ -308,7 +308,7 @@ def ask_agent(
     except (RuntimeError, TimeoutError):
         raise
     except (Exception, SystemExit) as exc:  # ADK calls sys.exit() on missing/expired login
-        logger.debug("ADK call failed", exc_info=True)
+        logger.exception("ADK call failed")
         raise RuntimeError(
             "Could not reach FinPath AI. "
             "Make sure your Orchestrate environment is active "

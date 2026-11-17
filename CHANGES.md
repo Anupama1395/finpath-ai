@@ -20,6 +20,7 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 12 | Landing layout fixes: full-width iframe, no empty black gap, card 02 title shortened to "See the numbers" | ✅ done | `paridhi_08_hero.png` |
 | 13 | Landing screen: remove dashed wave/paths, add How-it-works strip, hero-question box, guardrails line, fill vertical space | ✅ done | `paridhi_09_remove-wave.png` |
 | 14 | Fix Streamlit Cloud deploy crash: pin `ibm-watsonx-orchestrate==2.20.0`, add missing `ibm-cloud-sdk-core==3.28.2` to requirements.txt | ✅ done | — |
+| 15 | Log full exception on agent connection failure (`logger.exception` instead of `logger.debug`) so Streamlit Cloud logs show real IAM/URL/agent errors | ✅ done | — |
 
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
@@ -237,3 +238,23 @@ No other missing imports were found: `streamlit`, `altair`, `pandas`, and `pytho
 
 —
 
+
+## 15. Log full exception on agent connection failure ✅
+
+**What (done 2026-11-17, branch `paridhi/fix-requirements`):** One-line change to [`app/api_client.py`](app/api_client.py) — no logic altered:
+
+```python
+# before
+logger.debug("ADK call failed", exc_info=True)
+
+# after
+logger.exception("ADK call failed")
+```
+
+`logging.exception` logs at **ERROR** level and always attaches the current exception's full traceback. `logging.debug` with `exc_info=True` logs at DEBUG level, which Streamlit Cloud suppresses by default, so the real error (bad IAM key, wrong instance URL, agent not found, network timeout, etc.) was silently swallowed and never appeared in the cloud log viewer.
+
+**Why:** When the deploy crashed, the only observable symptom was the generic `RuntimeError("Could not reach FinPath AI…")` bubble in the UI. The root cause — expired IAM token, mistyped `ORCHESTRATE_INSTANCE_URL`, agent name mismatch — was hidden in a DEBUG-level log that the cloud never surfaces. Switching to `logger.exception` makes the real failure visible immediately in the Streamlit Cloud "Logs" tab without any configuration change.
+
+**Checked by:** 217 tests passed (`pytest tests/ --ignore=tests/smoke_test.py`). No other logic changed.
+
+—
