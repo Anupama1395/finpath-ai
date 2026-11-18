@@ -1,8 +1,8 @@
-# FinPath AI: Change Log (Paridhi → Anupama)
+# FinPath AI: Change Log — Paridhi's changes
 
-Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/bob-docs`**: what changed, **why**, and how I checked it. Each change was made in **IBM Bob IDE**, and its session screenshot is in `bob_sessions/`. Please review the draft PR and leave comments on anything you'd like done differently. Nothing touches your agent logic without us agreeing first.
+This file tracks changes I made in **IBM Bob IDE**: what changed, **why**, and how I checked it. Each change's session screenshot is in `bob_sessions/`.
 
-**Why this branch exists:** the submission requires (1) Bob session reports from *each* member in the repo, (2) a working prototype link, and (3) written problem/solution and technology statements. The code itself is in great shape (193 tests passing, 99% coverage on `tools/core`). These changes are polish, one bug fix, and the submission requirements.
+**Why this file exists:** the submission requires (1) Bob session reports from *each* member in the repo, (2) a working prototype link, and (3) written problem/solution and technology statements. The code itself is in great shape (217 tests passing). These changes are polish, bug fixes, and the submission requirements.
 
 | # | Change | Status | Bob screenshot |
 |---|--------|--------|————————|
@@ -11,8 +11,7 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 3 | Architecture diagram (Mermaid) | ✅ done | `paridhi_03_architecture.png` |
 | 4 | README: Built with Bob / Data sources / Responsible AI | 🔨 in progress | `paridhi_04_readme.png` |
 | 5 | Deployable to Streamlit Cloud (secrets) | ✅ done | `paridhi_05_deploy.png` |
-| 6 | Demo-mode fallback | ✅ done | `paridhi_05_deploy.png` |
-| 7 | Step 1 & Step 3 UI fixes | ✅ done | `paridhi_06_ui-fixes.png` |
+| 6 | Demo-mode fallback | ✅ done | `paridhi_| 7 | Step 1 & Step 3 UI fixes | ✅ done | `paridhi_06_ui-fixes.png` |
 | 8 | Step 0 landing screen (aurora bg, typing tagline, GIF, cards, Get Started) | ✅ done | `paridhi_08_hero.png` |
 | 9 | Landing screen polish: remove duplicate button, add ticker tape | ✅ done | `paridhi_08_hero.png` |
 | 10 | Ticker tape: live values from session state, no hard-coded numbers | ✅ done | `paridhi_08_hero.png` |
@@ -22,7 +21,7 @@ Hi Anupama! 👋 This file tracks every change I'm making on branch **`paridhi/b
 | 14 | Fix Streamlit Cloud deploy crash: pin `ibm-watsonx-orchestrate==2.20.0`, add missing `ibm-cloud-sdk-core==3.28.2` to requirements.txt | ✅ done | — |
 | 15 | Log full exception on agent connection failure (`logger.exception` instead of `logger.debug`) so Streamlit Cloud logs show real IAM/URL/agent errors | ✅ done | — |
 | 16 | Sync `app/requirements.txt` with root: add `ibm-watsonx-orchestrate==2.20.0`, `ibm-cloud-sdk-core==3.28.2`, `python-dotenv`; align version floors for `streamlit`, `altair`, `pandas` — fixes Streamlit Cloud picking wrong file and crashing with `ModuleNotFoundError` | ✅ done | — |
-
+| 17 | Steps 1–3 polish: help text on Step 1 inputs, upload label fixed, hero question chip on Step 2, plain-English takeaway + full goal summary on Step 3, width="stretch" cleanup, README live link | ✅ done | `paridhi_10_steps-polish.png` |
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
@@ -98,8 +97,8 @@ Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 - `data/profiles.json`: added `income_breakdown`, `expense_breakdown`, `savings_breakdown` to all 6 profiles, each summing exactly to the existing totals. Recent Graduate expenses $2,400 = housing $1,200 + food $500 + transport $300 + subs $100 + other $300.
 - `app/main.py _load_profile()`: reads breakdown fields from the profile (with sum-check fallback to old behaviour if absent or mismatched). Seeds an "Emergency fund" goal with target = 3 × monthly_expenses, saved = cash_savings (Recent Graduate: $7,200 / $1,500).
 - Goal summary changed from `st.text_input` → `st.text_area` (no more cut-off).
-- File uploader label updated to "Upload a saved profile (.json, a few KB)".
-- Follow-up chips shortened to fit without truncation: "+$100/mo debt payment?", "Income down 10%?", "Invest vs pay debt?".
+- File uploader label updated to "Upload a saved profile (.json, a few KB)”.
+- Follow-up chips shortened to fit without truncation: "+$100/mo debt payment?", "Income down 10%?", "Invest vs pay debt?”.
 - Chart title shortened to "Debt balance — 36 months" to prevent clipping.
 
 **Health check unchanged:** Recent Graduate score=57, cash flow=+$350/mo, EF coverage=0.62 mo ✓
@@ -123,7 +122,7 @@ Landing screen features:
 - **Looping typing animation** — "Every dollar has a path. Find yours." types in, holds 1.8 s, deletes, loops; blinking orange cursor
 - **Sub-line** in monospace muted text
 - **Get Started →** CTA button (orange, large) — single button inside the iframe
-- **Animated GIF** with label "Your dollars, finding their path"
+- **Animated GIF** with label "Your dollars, finding their path”
 - **3 rounded cards** — Ask a money question / See the numbers & trade-offs / Try a what-if
 - **Disclaimer** footer
 - Steps 1–3 unchanged — no background image, full readability preserved
@@ -211,7 +210,7 @@ No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/fin
 
 2. **Added three new sections under the cards:**
    - **How it works strip** — a three-cell horizontal bar: `1 — Pick a profile · 2 — Ask a question · 3 — See the numbers & try a what-if`
-   - **Hero-question example box** — teal left-border callout: *"Can I invest $300 more a month and still keep three months of emergency cash?"*
+   - **Hero-question example box** — teal left-border callout: *"Can I invest $300 more a month and still keep three months of emergency cash?”*
    - **Guardrails line** — dim monospace text: *No real money · no real accounts · no product recommendations · Synthetic profiles only · Educational tool — not financial advice.*
 
 3. **Vertical spacing** — wrap uses `height:calc(100vh - 2rem)` + `justify-content:space-between` with `padding-bottom:4rem` on the wrap so the two flex blocks (hero copy + bottom section) distribute the slack evenly (~117px above cards, ~98px below guardrails). Ticker stays `position:fixed; bottom:0` and is always visible at the bottom of the viewport. Iframe height set to `820px`. No page scrolling.
@@ -221,7 +220,6 @@ No calculations, profile data, or Step 1/2/3 logic were touched. `tools/core/fin
 **Checked by:** 217 tests passed. Bob session (`paridhi_09_remove-wave.png`).
 
 —
-
 
 ## 14. Fix Streamlit Cloud deploy crash ✅
 
@@ -238,7 +236,6 @@ No other missing imports were found: `streamlit`, `altair`, `pandas`, and `pytho
 **Checked by:** 217 tests passed (`pytest tests/ --ignore=tests/smoke_test.py`). No app logic, calculations, or landing changed.
 
 —
-
 
 ## 15. Log full exception on agent connection failure ✅
 
@@ -278,3 +275,18 @@ python-dotenv
 **Checked by:** 217 tests passed (`pytest tests/ --ignore=tests/smoke_test.py`). No app logic, calculations, or landing touched.
 
 —
+
+## 17. Steps 1–3 polish ✅
+
+**What (done 2026-11-18, branch `paridhi/steps-polish`):**
+- Step 1: plain-English `help=` text on every profile input; upload label changed to "Upload a saved FinPath AI profile (JSON)"
+- Step 2: tappable hero chip — "Can I invest $300 more a month and still keep three months of emergency cash?" — fills the question box
+- Step 3: "FinPath AI says" takeaway callout with the plain-English answer first; goal summary now shows every goal in full, no truncation
+- Follow-up chips now show the full question text, not the short label
+- Replaced all `use_container_width=True` with `width="stretch"`
+- README: live prototype link added at the top — https://finpath-ai-copilot.streamlit.app/
+
+**Why:** The demo video walks through Steps 1–3, so each step needs to be self-explanatory on screen, with no truncated text and no misleading labels.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_10_steps-polish.png`). Verified on localhost with screenshots of Steps 1, 2, and 3.
+
