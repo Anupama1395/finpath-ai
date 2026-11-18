@@ -524,6 +524,26 @@ def _assumptions_expander() -> None:
             for l,v in rows
         )
         st.markdown(html, unsafe_allow_html=True)
+        # ── Goals: show every goal in full — no truncation ───────────────────
+        active_goals = [g for g in S.goals if g.get("target", 0) > 0 or g.get("name", "").strip()]
+        if active_goals:
+            st.markdown(
+                '<p style="font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;'
+                'text-transform:uppercase;color:var(--dim);margin:.7rem 0 .3rem">Goals</p>',
+                unsafe_allow_html=True,
+            )
+            for g in active_goals:
+                name    = g.get("name", "") or "Unnamed goal"
+                target  = g.get("target", 0)
+                saved   = g.get("current_saved", 0)
+                months  = g.get("months", 12)
+                g_html  = (
+                    f'<div style="padding:.3rem 0;border-bottom:1px solid var(--border)">'
+                    f'<span style="font-family:var(--mono);font-size:.63rem;color:var(--text)">{name}</span>'
+                    f'<span style="font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-left:.5rem">'
+                    f'— target ${target:,} in {months} mo, saved ${saved:,}</span></div>'
+                )
+                st.markdown(g_html, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1069,9 +1089,10 @@ def render_step1() -> None:
     ld_col, sv_col = st.columns([1, 1], gap="small")
     with ld_col:
         uploaded = st.file_uploader(
-            "⬆ Upload a saved profile (.json, a few KB)",
+            "⬆ Upload a saved FinPath AI profile (JSON)",
             type="json", key="profile_upload",
-            label_visibility="collapsed",
+            label_visibility="visible",
+            help="Upload a profile you previously saved from FinPath AI — a small JSON file, usually a few KB.",
         )
         if uploaded is not None:
             try:
@@ -1086,7 +1107,7 @@ def render_step1() -> None:
             data=_export_profile_json().encode(),
             file_name=f"finpath_profile_{date.today().isoformat()}.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
             key="btn_save_profile",
         )
 
@@ -1101,7 +1122,7 @@ def render_step1() -> None:
             desc = p["label"].split("—")[1].strip() if "—" in p["label"] else ""
             with col:
                 st.markdown('<div class="profile-selected">' if is_sel else '<div>', unsafe_allow_html=True)
-                st.button(name, key=f"chip_{p['id']}", use_container_width=True, on_click=_load_profile, args=(p,))
+                st.button(name, key=f"chip_{p['id']}", width="stretch", on_click=_load_profile, args=(p,))
                 if desc: st.caption(desc)
                 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1117,11 +1138,14 @@ def render_step1() -> None:
     with st.expander(f"💵 Income  —  total ${S.income:,}/mo", expanded=True):
         ia, ib, ic = st.columns(3, gap="small")
         with ia:
-            S.inc_salary = st.number_input("Salary / wages ($)", min_value=0, step=100, value=int(S.inc_salary), key="in_inc_salary")
+            S.inc_salary = st.number_input("Salary / wages ($)", min_value=0, step=100, value=int(S.inc_salary), key="in_inc_salary",
+                help="Your regular take-home pay from employment. Enter the net (after-tax) monthly amount.")
         with ib:
-            S.inc_side = st.number_input("Side income ($)", min_value=0, step=50, value=int(S.inc_side), key="in_inc_side")
+            S.inc_side = st.number_input("Side income ($)", min_value=0, step=50, value=int(S.inc_side), key="in_inc_side",
+                help="Freelance, gig work, consulting, or any irregular income. Leave at 0 if none.")
         with ic:
-            S.inc_other = st.number_input("Other income ($)", min_value=0, step=50, value=int(S.inc_other), key="in_inc_other")
+            S.inc_other = st.number_input("Other income ($)", min_value=0, step=50, value=int(S.inc_other), key="in_inc_other",
+                help="Rental income, dividends, benefits, or any other monthly income not covered above.")
         S.income = int(S.inc_salary + S.inc_side + S.inc_other)
         # keep legacy widget key in sync
         st.session_state["in_income"] = S.income
@@ -1131,12 +1155,17 @@ def render_step1() -> None:
     with st.expander(f"💸 Expenses  —  total ${S.expenses:,}/mo", expanded=True):
         ea, eb = st.columns(2, gap="small")
         with ea:
-            S.exp_housing   = st.number_input("Housing / rent ($)",     min_value=0, step=50, value=int(S.exp_housing),   key="in_exp_housing")
-            S.exp_food      = st.number_input("Food & groceries ($)",   min_value=0, step=50, value=int(S.exp_food),      key="in_exp_food")
-            S.exp_transport = st.number_input("Transport ($)",          min_value=0, step=50, value=int(S.exp_transport), key="in_exp_transport")
+            S.exp_housing   = st.number_input("Housing / rent ($)",   min_value=0, step=50, value=int(S.exp_housing),   key="in_exp_housing",
+                help="Rent or mortgage payment, plus any regular housing fees (e.g. HOA, insurance included in payment).")
+            S.exp_food      = st.number_input("Food & groceries ($)", min_value=0, step=50, value=int(S.exp_food),      key="in_exp_food",
+                help="Groceries, dining out, coffee, and any other food spending per month.")
+            S.exp_transport = st.number_input("Transport ($)",        min_value=0, step=50, value=int(S.exp_transport), key="in_exp_transport",
+                help="Car payment, fuel, insurance, public transit passes, or ride-shares — total monthly transport spend.")
         with eb:
-            S.exp_subs  = st.number_input("Subscriptions ($)",  min_value=0, step=10, value=int(S.exp_subs),  key="in_exp_subs")
-            S.exp_other = st.number_input("Other expenses ($)", min_value=0, step=50, value=int(S.exp_other), key="in_exp_other")
+            S.exp_subs  = st.number_input("Subscriptions ($)", min_value=0, step=10, value=int(S.exp_subs),  key="in_exp_subs",
+                help="Streaming, gym, software, and any recurring monthly subscriptions.")
+            S.exp_other = st.number_input("Other expenses ($)", min_value=0, step=50, value=int(S.exp_other), key="in_exp_other",
+                help="Everything else — clothing, healthcare out-of-pocket, entertainment, miscellaneous. If unsure, use a rough estimate.")
         S.expenses = int(S.exp_housing + S.exp_food + S.exp_transport + S.exp_subs + S.exp_other)
         st.session_state["in_expenses"] = S.expenses
         st.caption(f"Total monthly expenses: ${S.expenses:,}")
@@ -1145,11 +1174,14 @@ def render_step1() -> None:
     with st.expander(f"🏦 Savings  —  total ${S.savings:,}", expanded=False):
         sa, sb, sc = st.columns(3, gap="small")
         with sa:
-            S.sav_emergency = st.number_input("Emergency fund ($)", min_value=0, step=500, value=int(S.sav_emergency), key="in_sav_emergency")
+            S.sav_emergency = st.number_input("Emergency fund ($)", min_value=0, step=500, value=int(S.sav_emergency), key="in_sav_emergency",
+                help="Cash in a savings account you could access immediately in an emergency — typically 3–6 months of expenses.")
         with sb:
-            S.sav_invest = st.number_input("Investments ($)", min_value=0, step=500, value=int(S.sav_invest), key="in_sav_invest")
+            S.sav_invest = st.number_input("Investments ($)", min_value=0, step=500, value=int(S.sav_invest), key="in_sav_invest",
+                help="Brokerage accounts, 401(k)/IRA balances, stocks, or any investment account value.")
         with sc:
-            S.sav_other = st.number_input("Other savings ($)", min_value=0, step=100, value=int(S.sav_other), key="in_sav_other")
+            S.sav_other = st.number_input("Other savings ($)", min_value=0, step=100, value=int(S.sav_other), key="in_sav_other",
+                help="Any other savings not counted above — e.g. a house deposit fund, education fund, or unallocated cash.")
         S.savings = int(S.sav_emergency + S.sav_invest + S.sav_other)
         st.session_state["in_savings"] = S.savings
         st.caption(f"Total savings: ${S.savings:,}")
@@ -1158,19 +1190,24 @@ def render_step1() -> None:
     lc2, rc2 = st.columns([1,1], gap="large")
     with lc2:
         _section_label("Savings contribution", mt=".8rem")
-        S.savings_contrib = st.number_input("Currently saving per month ($)", min_value=0, step=50, value=int(S.savings_contrib), key="in_savings_contrib")
+        S.savings_contrib = st.number_input("Currently saving per month ($)", min_value=0, step=50, value=int(S.savings_contrib), key="in_savings_contrib",
+            help="How much you actively transfer into savings or investments each month — not counting debt payments.")
     with rc2:
         _section_label("Goal context", mt=".8rem")
-        S.goal = st.text_area("Goal summary (optional)", value=S.goal, placeholder="e.g. Pay off debt in 3 years", key="in_goal", height=68)
+        S.goal = st.text_area("Goal summary (optional)", value=S.goal, placeholder="e.g. Pay off debt in 3 years", key="in_goal", height=68,
+            help="A brief description of your top financial goal. The structured goal rows below are used for the calculations; this is for extra context.")
 
     lc3, rc3 = st.columns([1,1], gap="large")
     with lc3:
         _section_label("Debt", mt=".8rem")
-        S.debt_bal    = st.number_input("Total debt balance ($)",    min_value=0, step=1000, value=int(S.debt_bal),     key="in_debt_bal")
-        S.debt_payment= st.number_input("Monthly debt payment ($)", min_value=0, step=50,   value=int(S.debt_payment),  key="in_debt_payment")
+        S.debt_bal    = st.number_input("Total debt balance ($)",    min_value=0, step=1000, value=int(S.debt_bal),     key="in_debt_bal",
+            help="Total outstanding debt across all loans and credit cards — the amount you still owe today.")
+        S.debt_payment= st.number_input("Monthly debt payment ($)", min_value=0, step=50,   value=int(S.debt_payment),  key="in_debt_payment",
+            help="The total you pay toward debt each month (minimum payments across all accounts combined).")
     with rc3:
         _section_label("Debt rate", mt=".8rem")
-        S.debt_rate = st.number_input("Interest rate (% p.a.)", min_value=0.0, max_value=50.0, step=0.5, value=float(S.debt_rate), key="in_debt_rate", format="%.1f")
+        S.debt_rate = st.number_input("Interest rate (% p.a.)", min_value=0.0, max_value=50.0, step=0.5, value=float(S.debt_rate), key="in_debt_rate", format="%.1f",
+            help="The blended annual interest rate across your debts. If you have multiple debts at different rates, use a rough average.")
 
     # ── Multiple goals ────────────────────────────────────────────────────────
     st.markdown('<hr style="margin:.8rem 0">', unsafe_allow_html=True)
@@ -1219,7 +1256,7 @@ def render_step1() -> None:
         _section_label("Debt table — avalanche vs snowball will be computed for you", mt=".4rem")
         import pandas as pd
         df = pd.DataFrame(S.multi_debts)
-        edited = st.data_editor(df, num_rows="dynamic", use_container_width=True, key="debt_table",
+        edited = st.data_editor(df, num_rows="dynamic", width="stretch", key="debt_table",
                                 column_config={
                                     "Name": st.column_config.TextColumn("Name"),
                                     "Balance ($)": st.column_config.NumberColumn("Balance ($)", min_value=0, step=100),
@@ -1234,7 +1271,7 @@ def render_step1() -> None:
     st.markdown('<hr>', unsafe_allow_html=True)
     _, bc = st.columns([3,1])
     with bc:
-        st.button("Next →", key="step1_next", use_container_width=True, type="primary",
+        st.button("Next →", key="step1_next", width="stretch", type="primary",
                   disabled=(S.income==0 or S.expenses==0), on_click=lambda: _go(2))
     _disclaimer()
 
@@ -1267,13 +1304,30 @@ def render_step2() -> None:
         f'<span style="{pill}">Debt <b style="{vs}">${S.debt_bal:,} @ {S.debt_rate:.1f}%</b></span>'
         f'</div>', unsafe_allow_html=True,
     )
-    _section_label("Quick suggestions", mt="0")
+    # ── Hero question chip ────────────────────────────────────────────────────
+    _HERO_QUESTION = "Can I invest $300 more a month and still keep three months of emergency cash?"
+    st.markdown(
+        '<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;'
+        'text-transform:uppercase;color:var(--dim);margin:0 0 .4rem">Try this</p>',
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
+    st.button(
+        f'💡 {_HERO_QUESTION}',
+        key="hero_chip",
+        width="stretch",
+        on_click=_set_question,
+        args=(_HERO_QUESTION,),
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    _section_label("Quick suggestions", mt=".9rem")
     c1, c2 = st.columns(2, gap="small")
     for i, s in enumerate(SUGGESTIONS):
         col = c1 if i%2==0 else c2
         with col:
             st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
-            st.button(s, key=f"sug_{i}", use_container_width=True, on_click=_set_question, args=(s,))
+            st.button(s, key=f"sug_{i}", width="stretch", on_click=_set_question, args=(s,))
             st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div style="margin-top:1rem"></div>', unsafe_allow_html=True)
@@ -1286,9 +1340,9 @@ def render_step2() -> None:
     st.markdown('<hr>', unsafe_allow_html=True)
     bc, gc = st.columns([1,1])
     with bc:
-        if st.button("← Edit profile", key="step2_back", use_container_width=True): _go(1)
+        if st.button("← Edit profile", key="step2_back", width="stretch"): _go(1)
     with gc:
-        if st.button("Ask FinPath →", key="step2_run", use_container_width=True, type="primary", disabled=not S.question.strip()):
+        if st.button("Ask FinPath →", key="step2_run", width="stretch", type="primary", disabled=not S.question.strip()):
             S.messages=[]; S.thread_id=None; S.pending_send=None; S.error=None; S.initial_sent=False; _go(3)
     _disclaimer()
 
@@ -1409,8 +1463,8 @@ def _whatiif_section() -> None:
         .configure_view(strokeOpacity=0, fill="#131720").configure(background="#0B0D10"))
 
         col_d, col_s = st.columns(2)
-        with col_d: st.altair_chart(ch_debt, use_container_width=True)
-        with col_s: st.altair_chart(ch_sav,  use_container_width=True)
+        with col_d: st.altair_chart(ch_debt, width="stretch")
+        with col_s: st.altair_chart(ch_sav,  width="stretch")
 
 
 def _download_summary() -> None:
@@ -1489,6 +1543,65 @@ def render_step3() -> None:
         else:
             st.markdown('<p style="font-family:var(--mono);font-size:.62rem;color:var(--dim)">No questions yet</p>', unsafe_allow_html=True)
 
+    # ── Hero takeaway: first plain-English answer sentence ───────────────────
+    first_reply = next((m for m in S.messages if m["role"] == "assistant"), None)
+    if first_reply:
+        _HEADER_WORDS = {
+            "assumptions", "analysis", "result", "summary", "profile",
+            "input", "breakdown", "overview", "note", "disclaimer",
+            "educational", "advice", "tool", "output", "parameters",
+        }
+        # Data-label pattern: 'Some Label: $value' or 'Key: 7%' — not a sentence
+        _DATA_LABEL_RE = re.compile(r"^[A-Za-z][A-Za-z ,/()\-%]*:\s*[\$\d]")
+        # A real sentence contains at least one verb/predicate word
+        _SENTENCE_RE = re.compile(
+            r"\b(will|is|are|was|were|has|have|had|can|could|would|should|"
+            r"covers|paid|takes|gives|shows|means|puts|needs)\b", re.I
+        )
+        _takeaway = ""
+        for _raw in first_reply["content"].splitlines():
+            _l = _raw.strip()
+            if not _l:
+                continue
+            # Skip markdown headings (# / ## / ###)
+            if _l.startswith("#"):
+                continue
+            # Strip all markdown bold/italic markers to get plain text
+            _plain = re.sub(r"\*{1,3}", "", _l).strip()
+            if not _plain:
+                continue
+            # Skip lines that consist solely of section-label words
+            # e.g. "Debt Payoff Analysis", "Assumptions used", "Result"
+            _lower = _plain.lower()
+            _words = set(re.sub(r"[^a-z ]", " ", _lower).split())
+            if _words and _words.issubset(
+                _HEADER_WORDS | {"used", "and", "the", "a", "of", "for", "with", "in", "is", "are"}
+            ):
+                continue
+            # Skip very short fragments (< 20 chars) — likely a label, not a sentence
+            if len(_plain) < 20:
+                continue
+            # Skip data-label lines like "Monthly income: $5,000" or "Debt rate: 7%"
+            if _DATA_LABEL_RE.match(_plain):
+                continue
+            # Must look like a real sentence — contains a verb or predicate word
+            if not _SENTENCE_RE.search(_plain):
+                continue
+            _takeaway = _plain
+            break
+
+        if _takeaway:
+            st.markdown(
+                f'<div style="margin:0 0 1.2rem;padding:.85rem 1.1rem;'
+                f'background:rgba(78,168,107,.07);border:1px solid rgba(78,168,107,.22);'
+                f'border-left:3px solid var(--green);border-radius:0 var(--radius) var(--radius) 0">'
+                f'<p style="font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;'
+                f'text-transform:uppercase;color:var(--green);margin:0 0 .3rem;opacity:.8">FinPath AI says</p>'
+                f'<p style="font:italic 400 1.05rem/1.5 var(--serif);color:var(--text);margin:0">'
+                f'{_takeaway}</p></div>',
+                unsafe_allow_html=True,
+            )
+
     # Chat history
     for msg in S.messages:
         if msg["role"]=="user":
@@ -1500,14 +1613,14 @@ def render_step3() -> None:
                 if msg.get("tools"):     _tool_chips(msg["tools"])
                 if msg.get("verified") is not None: _verified_badge(msg["verified"])
 
-    # Follow-up chips
+    # Follow-up chips — use full question text so nothing is truncated
     if S.messages and S.messages[-1]["role"]=="assistant" and not S.pending_send:
         _section_label("Follow-up suggestions", mt=".8rem")
         fc = st.columns(len(FOLLOWUP_SUGGESTIONS), gap="small")
         for col, (label, question) in zip(fc, FOLLOWUP_SUGGESTIONS):
             with col:
                 st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
-                st.button(label, key=f"fu_{label[:18]}", use_container_width=True, on_click=_send_message, args=(question,))
+                st.button(question, key=f"fu_{label[:18]}", width="stretch", on_click=_send_message, args=(question,))
                 st.markdown('</div>', unsafe_allow_html=True)
 
     # Chat input
@@ -1518,7 +1631,7 @@ def render_step3() -> None:
     if S.messages and _LOCAL_MATH:
         _whatiif_section()
 
-    # Assumptions expander
+    # Assumptions expander (includes full goals list)
     if S.messages: _assumptions_expander()
 
     # How it works
@@ -1540,7 +1653,7 @@ def render_step3() -> None:
     with lc:
         if st.button("← Edit profile", key="res_back"): S.error=None; _go(1)
     with rc:
-        if st.button("New conversation", key="res_new", use_container_width=True):
+        if st.button("New conversation", key="res_new", width="stretch"):
             S.messages=[]; S.thread_id=None; S.question=""; S.error=None; S.pending_send=None; S.initial_sent=False
             st.session_state.pop("in_question", None); _go(2)
 
@@ -1552,7 +1665,7 @@ def render_step3() -> None:
             data=summary_md.encode(),
             file_name=f"finpath_summary_{date.today().isoformat()}.md",
             mime="text/markdown",
-            use_container_width=True,
+            width="stretch",
         )
 
     _disclaimer()

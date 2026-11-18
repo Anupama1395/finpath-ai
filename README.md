@@ -1,7 +1,9 @@
 # FinPath AI
 
-> Agentic financial scenario copilot built on **IBM watsonx Orchestrate**  
+> Agentic financial scenario copilot built on **IBM watsonx Orchestrate**
 > IBM SkillsBuild AI Experiential Learning Lab · Banking & Financial Services
+
+**Live prototype:** https://finpath-ai-copilot.streamlit.app/
 
 [![CI](https://github.com/Anupama1395/finpath-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Anupama1395/finpath-ai/actions/workflows/ci.yml)
 
