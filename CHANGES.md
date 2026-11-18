@@ -24,6 +24,8 @@ This file tracks changes I made in **IBM Bob IDE**: what changed, **why**, and h
 | 16 | Sync `app/requirements.txt` with root: add `ibm-watsonx-orchestrate==2.20.0`, `ibm-cloud-sdk-core==3.28.2`, `python-dotenv`; align version floors for `streamlit`, `altair`, `pandas` — fixes Streamlit Cloud picking wrong file and crashing with `ModuleNotFoundError` | ✅ done | — |
 | 17 | Steps 1–3 polish: help text on Step 1 inputs, upload label fixed, hero question chip on Step 2, plain-English takeaway + full goal summary on Step 3, width="stretch" cleanup, README live link | ✅ done | `paridhi_10_steps-polish.png` |
 | 18 | Step 3 download report + rule-based suggestions: Download summary now returns a real markdown report (profile, health score, question, answer, what-if), 2–3 deterministic suggestions, no product recommendations | ✅ done | `paridhi_11_download-report.png` |
+| 19 | "How to use FinPath" manual on Step 1: collapsible expander with what FinPath is, the 3 steps, what each input means, upload/save profile help, and 4 Q&As | ✅ done | `paridhi_12_how-to-use.png` |
+
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
@@ -302,3 +304,13 @@ python-dotenv
 **Why:** Judges can download a complete record of the demo, and the suggestions show the deterministic tools working without the agent recommending products.
 
 **Checked by:** 217 tests passed. Bob session (`paridhi_11_download-report.png`). Verified on localhost.
+
+## 19. "How to use FinPath" manual ✅
+
+**What (done 2026-11-18, branch `paridhi/how-to-use`):**
+- Added a collapsible "📖 How to use FinPath" expander at the top of Step 1, collapsed by default
+- Inside: what FinPath is, the 3 steps (Pick a profile, Ask a question, See the numbers), what each of the 8 profile inputs means, how to upload/save a profile (JSON only), and 4 Q&As — "What if I don't know my numbers?", "Are these real recommendations?", "What does the health score mean?", "What is the emergency fund target?"
+
+**Why:** New users and judges can understand the app without guessing what to enter — the manual explains it in plain English, without changing the flow for returning users.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_12_how-to-use.png`). Verified on localhost.
