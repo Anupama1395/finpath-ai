@@ -1084,6 +1084,81 @@ def render_step1() -> None:
         unsafe_allow_html=True,
     )
 
+    # ── How to use FinPath — collapsible manual ───────────────────────────────
+    with st.expander("📖 How to use FinPath", expanded=False):
+        st.markdown(
+            """
+<div style="font-family:var(--sans);font-size:.88rem;line-height:1.75;color:var(--text)">
+
+<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 .5rem">What is FinPath?</p>
+<p style="margin:0 0 1rem">FinPath is an <strong>educational financial planning tool</strong> that turns your numbers into plain-English insights. You enter your income, expenses, savings, and debt — FinPath calculates your financial health score, checks whether your goals are on track, and lets you ask free-form questions like <em>"How long until I pay off my debt?"</em> or <em>"Can I afford to save $200 more a month?"</em> An AI assistant runs the maths and explains the results in plain English.</p>
+
+<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 .5rem">The 3 steps</p>
+<div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:1rem">
+  <div style="display:flex;gap:.7rem;align-items:flex-start;padding:.55rem .75rem;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+    <span style="font-family:var(--mono);font-size:.7rem;color:var(--orange);font-weight:600;flex-shrink:0;margin-top:.05rem">1</span>
+    <span><strong>Pick a profile</strong> — Choose a sample profile that most resembles your situation, or fill in your own numbers directly. You can also upload a profile you saved previously.</span>
+  </div>
+  <div style="display:flex;gap:.7rem;align-items:flex-start;padding:.55rem .75rem;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+    <span style="font-family:var(--mono);font-size:.7rem;color:var(--orange);font-weight:600;flex-shrink:0;margin-top:.05rem">2</span>
+    <span><strong>Ask a question</strong> — Type any financial question in plain English, or tap one of the suggestion chips. The more specific you are, the more useful the answer.</span>
+  </div>
+  <div style="display:flex;gap:.7rem;align-items:flex-start;padding:.55rem .75rem;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+    <span style="font-family:var(--mono);font-size:.7rem;color:var(--orange);font-weight:600;flex-shrink:0;margin-top:.05rem">3</span>
+    <span><strong>See the numbers</strong> — FinPath runs the calculations and gives you a clear answer with projections. Use the what-if sliders to explore scenarios, or ask follow-up questions in the chat.</span>
+  </div>
+</div>
+
+<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 .5rem">What each input means</p>
+<div style="margin-bottom:1rem">
+  <div style="display:grid;grid-template-columns:1fr 2fr;gap:.3rem .8rem">
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Monthly income</span>
+    <span style="font-size:.82rem">Your total take-home pay each month — salary, side income, and anything else that comes in. Use the net (after-tax) figure.</span>
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Monthly expenses</span>
+    <span style="font-size:.82rem">Everything you spend in a typical month: rent/mortgage, food, transport, subscriptions, and miscellaneous. Don't include debt payments — those have their own field.</span>
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Savings (total)</span>
+    <span style="font-size:.82rem">The amount currently sitting in your savings and investment accounts — your running total, not how much you add each month.</span>
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Saving per month</span>
+    <span style="font-size:.82rem">How much you actively put aside each month into savings or investments. If you're not currently saving, enter 0.</span>
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Debt balance</span>
+    <span style="font-size:.82rem">The total amount you still owe across all loans and credit cards today.</span>
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Monthly debt payment</span>
+    <span style="font-size:.82rem">The combined minimum payments you make toward debt each month.</span>
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Interest rate (% p.a.)</span>
+    <span style="font-size:.82rem">The annual interest rate on your debt. If you have several debts at different rates, use a rough average.</span>
+    <span style="font-family:var(--mono);font-size:.72rem;color:var(--orange)">Goals</span>
+    <span style="font-size:.82rem">Give each goal a name, a target amount, how much you've already saved toward it, and how many months you want to achieve it in. FinPath checks whether it's feasible with your current cash flow.</span>
+  </div>
+</div>
+
+<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 .5rem">Uploading and saving a profile</p>
+<p style="margin:0 0 1rem">Hit <strong>⬇ Save my profile</strong> at the top of this page to download your numbers as a small JSON file. Next time, use <strong>⬆ Upload a saved FinPath AI profile</strong> to reload them instantly — no re-typing. <em>Only files previously saved by FinPath AI (JSON format) are supported.</em></p>
+
+<p style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 .5rem">Common questions</p>
+<div style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:.5rem">
+  <div>
+    <p style="font-family:var(--mono);font-size:.72rem;color:var(--text);margin:0 0 .15rem"><strong>What if I don't know my exact numbers?</strong></p>
+    <p style="font-size:.82rem;margin:0;color:var(--muted)">Use rough estimates — FinPath is designed for approximations. Pick the closest sample profile and adjust a few fields, or just leave the defaults. The insights will still be meaningful even if the numbers aren't exact.</p>
+  </div>
+  <div>
+    <p style="font-family:var(--mono);font-size:.72rem;color:var(--text);margin:0 0 .15rem"><strong>Are these real financial recommendations?</strong></p>
+    <p style="font-size:.82rem;margin:0;color:var(--muted)">No. FinPath is an educational tool — it shows you projections and patterns based on the numbers you enter, but it does not know your full financial picture and is not a substitute for advice from a qualified financial professional. Always verify important decisions with a licensed adviser.</p>
+  </div>
+  <div>
+    <p style="font-family:var(--mono);font-size:.72rem;color:var(--text);margin:0 0 .15rem"><strong>What does the health score mean?</strong></p>
+    <p style="font-size:.82rem;margin:0;color:var(--muted)">The score (0–100) is a composite of four factors: cash flow (do you have money left after expenses and debt?), emergency fund coverage (how many months of expenses are covered?), debt burden (how much of your income goes to debt payments?), and savings rate (what percentage of income are you saving?). A score of 75+ is Strong, 50–74 Moderate, 25–49 Needs attention, and below 25 is Critical.</p>
+  </div>
+  <div>
+    <p style="font-family:var(--mono);font-size:.72rem;color:var(--text);margin:0 0 .15rem"><strong>What is the "emergency fund target"?</strong></p>
+    <p style="font-size:.82rem;margin:0;color:var(--muted)">A common personal-finance guideline is to keep 3–6 months of living expenses in an easily accessible account. FinPath uses 3 months as the minimum benchmark. The EF Target shown in the health card is simply 3 × your monthly expenses.</p>
+  </div>
+</div>
+
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+
     # ── Load / Save profile row ───────────────────────────────────────────────
     _section_label("Load or save profile", mt="0")
     ld_col, sv_col = st.columns([1, 1], gap="small")
