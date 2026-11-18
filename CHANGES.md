@@ -11,7 +11,8 @@ This file tracks changes I made in **IBM Bob IDE**: what changed, **why**, and h
 | 3 | Architecture diagram (Mermaid) | ✅ done | `paridhi_03_architecture.png` |
 | 4 | README: Built with Bob / Data sources / Responsible AI | 🔨 in progress | `paridhi_04_readme.png` |
 | 5 | Deployable to Streamlit Cloud (secrets) | ✅ done | `paridhi_05_deploy.png` |
-| 6 | Demo-mode fallback | ✅ done | `paridhi_| 7 | Step 1 & Step 3 UI fixes | ✅ done | `paridhi_06_ui-fixes.png` |
+| 6 | Demo-mode fallback | ✅ done | `paridhi_05_deploy.png` |
+| 7 | Step 1 & Step 3 UI fixes | ✅ done | `paridhi_06_ui-fixes.png` |
 | 8 | Step 0 landing screen (aurora bg, typing tagline, GIF, cards, Get Started) | ✅ done | `paridhi_08_hero.png` |
 | 9 | Landing screen polish: remove duplicate button, add ticker tape | ✅ done | `paridhi_08_hero.png` |
 | 10 | Ticker tape: live values from session state, no hard-coded numbers | ✅ done | `paridhi_08_hero.png` |
@@ -22,6 +23,7 @@ This file tracks changes I made in **IBM Bob IDE**: what changed, **why**, and h
 | 15 | Log full exception on agent connection failure (`logger.exception` instead of `logger.debug`) so Streamlit Cloud logs show real IAM/URL/agent errors | ✅ done | — |
 | 16 | Sync `app/requirements.txt` with root: add `ibm-watsonx-orchestrate==2.20.0`, `ibm-cloud-sdk-core==3.28.2`, `python-dotenv`; align version floors for `streamlit`, `altair`, `pandas` — fixes Streamlit Cloud picking wrong file and crashing with `ModuleNotFoundError` | ✅ done | — |
 | 17 | Steps 1–3 polish: help text on Step 1 inputs, upload label fixed, hero question chip on Step 2, plain-English takeaway + full goal summary on Step 3, width="stretch" cleanup, README live link | ✅ done | `paridhi_10_steps-polish.png` |
+| 18 | Step 3 download report + rule-based suggestions: Download summary now returns a real markdown report (profile, health score, question, answer, what-if), 2–3 deterministic suggestions, no product recommendations | ✅ done | `paridhi_11_download-report.png` |
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
 
@@ -290,3 +292,13 @@ python-dotenv
 
 **Checked by:** 217 tests passed. Bob session (`paridhi_10_steps-polish.png`). Verified on localhost with screenshots of Steps 1, 2, and 3.
 
+## 18. Step 3 download report + rule-based suggestions ✅
+
+**What (done 2026-11-18, branch `paridhi/download-report`):**
+- Step 3 Download summary now returns a real markdown report: profile summary, goals, health score, question, agent answer with numbers, what-if tried, and suggestions
+- 2–3 rule-based suggestions on Step 3, from deterministic rules/numbers only — no product recommendations, no named products
+- Disclaimer kept: "Educational tool — not financial advice"
+
+**Why:** Judges can download a complete record of the demo, and the suggestions show the deterministic tools working without the agent recommending products.
+
+**Checked by:** 217 tests passed. Bob session (`paridhi_11_download-report.png`). Verified on localhost.
