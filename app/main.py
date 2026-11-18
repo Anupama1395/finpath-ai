@@ -1467,10 +1467,66 @@ def _whatiif_section() -> None:
         with col_s: st.altair_chart(ch_sav,  width="stretch")
 
 
-def _download_summary() -> None:
-    """Build a markdown download of the full conversation."""
-    lines = ["# FinPath AI — Conversation Summary\n"]
+def _rule_suggestions() -> list[str]:
+    """Return 2–3 short, deterministic suggestions derived from the user's numbers only.
+
+    Rules are applied in priority order; at most 3 are returned.
+    No product names, no named financial products — numbers and ratios only.
+    """
+    tips: list[str] = []
+
+    cf   = S.income - S.expenses - S.debt_payment - S.savings_contrib
+    sr   = S.savings_contrib / S.income if S.income > 0 else 0.0
+    dti  = S.debt_payment / S.income if S.income > 0 else 0.0
+    ef   = S.savings / S.expenses if S.expenses > 0 else 0.0
+
+    # 1. Negative cash flow — most urgent
+    if cf < 0:
+        tips.append(
+            f"Your outflows exceed your income by ${abs(cf):,.0f}/mo. "
+            "Closing this gap — by trimming expenses or boosting income — is the first priority before any other move."
+        )
+
+    # 2. Emergency fund below 3 months
+    if ef < 3 and len(tips) < 3:
+        ef_target = S.expenses * 3
+        ef_gap    = max(0, ef_target - S.savings)
+        tips.append(
+            f"Your emergency fund covers {ef:.1f} month(s) of expenses; the 3-month guideline is ${ef_target:,.0f}. "
+            f"You need ${ef_gap:,.0f} more to reach it."
+        )
+
+    # 3. Savings rate below 10 %
+    if sr < 0.10 and cf > 0 and len(tips) < 3:
+        gap_to_10pct = round(S.income * 0.10 - S.savings_contrib)
+        tips.append(
+            f"Your savings rate is {sr*100:.0f}% (${S.savings_contrib:,}/mo). "
+            f"Raising it to 10% would add ${gap_to_10pct:,}/mo to savings — still leaving ${cf - gap_to_10pct:,.0f}/mo of surplus."
+        )
+
+    # 4. Debt-to-income above 28 %
+    if dti > 0.28 and len(tips) < 3:
+        tips.append(
+            f"Your debt payment is {dti*100:.0f}% of income. "
+            "The common guideline is 28% or below; reducing this ratio frees up cash flow for other goals."
+        )
+
+    # 5. Positive cash flow but no extra debt payment modelled — nudge
+    if cf > 0 and S.debt_bal > 0 and len(tips) < 3 and dti <= 0.28:
+        tips.append(
+            f"You have ${cf:,.0f}/mo of surplus. Even a small extra payment toward your "
+            f"${S.debt_bal:,.0f} balance reduces total interest paid over time."
+        )
+
+    return tips[:3]
+
+
+def _download_summary() -> str:
+    """Build a markdown download of the full conversation with health score and what-if."""
+    lines = ["# FinPath AI — Session Report\n"]
     lines.append(f"**Date:** {date.today().isoformat()}\n")
+
+    # ── Profile summary ──────────────────────────────────────────────────────
     lines.append("## Profile\n")
     lines += [
         f"- Monthly income: ${S.income:,}",
@@ -1482,12 +1538,86 @@ def _download_summary() -> None:
         f"- Goal: {S.goal or 'not specified'}",
         "",
     ]
+
+    # ── Goals ────────────────────────────────────────────────────────────────
+    active_goals = [g for g in S.goals if g.get("target", 0) > 0]
+    if active_goals:
+        lines.append("### Goals\n")
+        for g in active_goals:
+            lines.append(
+                f"- {g.get('name', 'Goal')}: target ${g.get('target', 0):,} "
+                f"in {g.get('months', 12)} months, saved ${g.get('current_saved', 0):,}"
+            )
+        lines.append("")
+
+    # ── Financial health score ───────────────────────────────────────────────
+    if _LOCAL_MATH and S.income > 0 and S.expenses > 0:
+        try:
+            h = _fhc(
+                income=S.income, expenses=S.expenses,
+                monthly_savings_contribution=S.savings_contrib,
+                current_savings=S.savings, debt_balance=S.debt_bal,
+                annual_debt_rate=S.debt_rate / 100,
+                monthly_debt_payment=S.debt_payment,
+            )
+            score = h["score"]
+            label = "Strong" if score >= 75 else ("Moderate" if score >= 50 else ("Needs attention" if score >= 25 else "Critical"))
+            lines.append("## Financial Health Score\n")
+            lines += [
+                f"- **Overall:** {score}/100 — {label}",
+                f"- Cash-flow sub-score: {h['cash_flow_score']}/25",
+                f"- Emergency-fund sub-score: {h['emergency_fund_score']}/25",
+                f"- Debt-burden sub-score: {h['debt_burden_score']}/25",
+                f"- Savings-rate sub-score: {h['savings_rate_score']}/25",
+                f"- Monthly surplus: ${h['cash_flow']:+,.0f}",
+                f"- Emergency fund coverage: {h['emergency_fund_months']:.1f} months",
+                f"- Debt-to-income ratio: {h['debt_to_income_ratio']*100:.0f}%",
+                f"- Savings rate: {h['savings_rate']*100:.0f}%",
+                "",
+            ]
+            if h.get("priorities"):
+                lines.append("### Priorities (from health check)\n")
+                for p in h["priorities"]:
+                    lines.append(f"- {p}")
+                lines.append("")
+        except Exception:
+            pass
+
+    # ── What-if tried ────────────────────────────────────────────────────────
+    if S.wi_extra_pmt != 0 or S.wi_income_chg != 0:
+        lines.append("## What-If Scenario Explored\n")
+        if S.wi_extra_pmt:
+            lines.append(f"- Extra debt payment modelled: +${S.wi_extra_pmt:,}/mo")
+        if S.wi_income_chg:
+            lines.append(f"- Income change modelled: {S.wi_income_chg:+.0f}%")
+        lines.append("")
+
+    # ── Question and agent answer ────────────────────────────────────────────
     lines.append("## Conversation\n")
     for msg in S.messages:
-        role = "**You**" if msg["role"]=="user" else "**FinPath AI**"
+        role = "**You**" if msg["role"] == "user" else "**FinPath AI**"
         tools_str = f"\n*Tools used: {', '.join(msg['tools'])}*" if msg.get("tools") else ""
-        lines.append(f"{role}: {msg['content']}{tools_str}\n")
-    lines.append("\n---\n*FinPath AI provides illustrative projections only. Not financial advice.*")
+        verified = msg.get("verified")
+        verified_str = ""
+        if verified is True:
+            verified_str = "\n*✓ Figures verified against calculations*"
+        elif verified is False:
+            verified_str = "\n*⚠ Some figures could not be verified*"
+        lines.append(f"{role}: {msg['content']}{tools_str}{verified_str}\n")
+
+    # ── Rule-based suggestions ───────────────────────────────────────────────
+    suggestions = _rule_suggestions()
+    if suggestions:
+        lines.append("## Suggestions (rule-based, illustrative)\n")
+        for tip in suggestions:
+            lines.append(f"- {tip}")
+        lines.append("")
+
+    lines.append(
+        "---\n"
+        "*Educational tool — not financial advice. "
+        "All projections are illustrative only.*"
+    )
     return "\n".join(lines)
 
 
@@ -1622,6 +1752,27 @@ def render_step3() -> None:
                 st.markdown('<div class="sug-btn">', unsafe_allow_html=True)
                 st.button(question, key=f"fu_{label[:18]}", width="stretch", on_click=_send_message, args=(question,))
                 st.markdown('</div>', unsafe_allow_html=True)
+
+    # Rule-based suggestions
+    if S.messages and S.messages[-1]["role"] == "assistant" and not S.pending_send:
+        suggestions = _rule_suggestions()
+        if suggestions:
+            _section_label("Suggestions based on your numbers", mt="1rem")
+            for tip in suggestions:
+                st.markdown(
+                    f'<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.55rem .8rem;'
+                    f'margin-bottom:.4rem;background:var(--surface);border:1px solid var(--border);'
+                    f'border-left:3px solid var(--gold);border-radius:0 var(--radius-sm) var(--radius-sm) 0">'
+                    f'<span style="color:var(--gold);font-size:.8rem;flex-shrink:0;margin-top:.05rem">›</span>'
+                    f'<span style="font-family:var(--mono);font-size:.65rem;color:var(--muted);line-height:1.5">'
+                    f'{tip}</span></div>',
+                    unsafe_allow_html=True,
+                )
+            st.markdown(
+                '<p style="font-family:var(--mono);font-size:.58rem;color:var(--dim);'
+                'margin:.2rem 0 .8rem">Rule-based · illustrative only · Educational tool — not financial advice</p>',
+                unsafe_allow_html=True,
+            )
 
     # Chat input
     inp = st.chat_input("Ask a follow-up…")
