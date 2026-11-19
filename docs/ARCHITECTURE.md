@@ -9,6 +9,13 @@ flowchart TD
     Client["app/api_client.py<br/>ask_agent: prepends profile, verifies figures"]
     WXO["IBM watsonx Orchestrate<br/>finpath_agent - react_core ReAct loop"]
 
+    subgraph RAG["RAG / Knowledge Base"]
+        direction LR
+        KB["finpath_kb<br/>knowledge/finpath_kb.yaml<br/>4 docs: emergency funds · compound interest<br/>debt repayment · savings rate"]
+        KBA["finpath_kb_agent<br/>agents/finpath_kb_agent.yaml<br/>retrieves & cites source docs"]
+        KB -->|"vector retrieval"| KBA
+    end
+
     subgraph Wrappers["Tool wrappers - tools/*.py (12 registered tools)"]
         direction TB
         T1["cash_flow_tool.py<br/>monthly_cash_flow, emergency_fund_months"]
@@ -30,18 +37,16 @@ flowchart TD
 
     Core["tools/core/finance.py<br/>pure Python math, stdlib only"]
 
-    KBAgent["IBM watsonx Orchestrate<br/>finpath_kb_agent - knowledge retrieval<br/>knowledge base: finpath_kb"]
-
     User -->|"fills profile, asks question"| UI
     UI -->|"ask_agent with message, profile, thread_id"| Client
     Client -->|"profile block + question via ADK RunClient"| WXO
+    WXO -->|"knowledge questions"| KBA
     WXO -->|"tool calls"| Wrappers
     Wrappers -->|"delegate all math"| Core
     UI -.->|"direct import for live health card and goal cards"| Core
     WXO -->|"reply, tool names, thread_id"| Client
     Client -->|"reply, tools used, verified flag"| UI
     UI -->|"chat, tool chips, verified badge"| User
-    WXO -.->|"why / conceptual"| KBAgent
 ```
 
 ## System overview
