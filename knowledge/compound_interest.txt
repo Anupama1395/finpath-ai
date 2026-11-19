@@ -1,0 +1,154 @@
+COMPOUND INTEREST
+FinPath AI Knowledge Base
+
+SOURCES
+Source A:
+  Title:   "What is compound interest?"
+  Publisher: U.S. Securities and Exchange Commission -- Investor.gov
+  URL:     https://www.investor.gov/additional-resources/information/youth/teachers-classroom-resources/what-compound-interest
+  Note:    Page title confirmed retrievable November 18, 2026. Body content
+           is JavaScript-rendered and could not be fully retrieved in this
+           environment. Claims marked [INVESTOR.GOV] are attributed to this
+           page but could not be verified against the full text.
+
+Source B:
+  Title:   "Credit cards key terms"
+  Publisher: Consumer Financial Protection Bureau (CFPB)
+  URL:     https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/
+  Note:    Full text retrieved November 18, 2026. Claims marked [CFPB-CC]
+           are drawn directly from confirmed retrieved text.
+
+Source C:
+  Title:   Internal FinPath AI system documentation
+  Note:    Claims marked [FINPATH] describe how the FinPath AI
+           project_savings_growth tool works. These are system facts, not
+           claims attributed to any external source.
+
+
+WHAT IS COMPOUND INTEREST
+
+NOTE ON INVESTOR.GOV CLAIMS: The two sections below ("WHAT IS COMPOUND
+INTEREST" and "HOW COMPOUND INTEREST WORKS IN SAVINGS") are attributed to
+the Investor.gov article "What is compound interest?" (Source A above).
+The page title was confirmed but the body text was not retrieved. The
+definitions given are standard and widely used, but they have not been
+verified against the full text of that specific page. They are presented
+here as attributed but unverified.
+
+[INVESTOR.GOV -- not body-verified] Compound interest is interest calculated
+on both the initial principal and the interest that has already been earned
+on that principal. In other words, it is "interest on interest."
+
+[INVESTOR.GOV -- not body-verified] This is distinct from simple interest,
+which is calculated only on the original principal amount.
+
+The following claims ARE confirmed from the CFPB credit card key terms page:
+
+[CFPB-CC] A credit card's interest rate is typically stated as an annual
+percentage rate (APR). The APR is the standard way to compare how much
+loans or credit products cost on an apples-to-apples basis.
+
+[CFPB-CC] For credit cards, interest is calculated using a daily periodic
+rate. This interest amount is added to the previous day's balance, which
+means that interest on credit card balances is compounded on a daily basis.
+
+[CFPB-CC] APRs are often different from simple interest rates. The APR
+accounts for the interest rate and fees compared against the amount
+borrowed over a one-year period.
+
+
+HOW COMPOUND INTEREST WORKS IN SAVINGS
+
+[INVESTOR.GOV -- not body-verified] When interest compounds on a savings
+account or investment, the earned interest is added to the balance, and
+future interest is calculated on that larger balance. Each compounding
+period, the balance grows by a larger absolute dollar amount than the
+period before.
+
+[INVESTOR.GOV -- not body-verified] Compounding frequency matters: the more
+frequently interest is applied (for example, monthly versus annually), the
+faster a balance grows, even at the same stated annual rate.
+
+
+APR AND APY: WHAT IS THE DIFFERENCE
+
+APR and APY are not interchangeable. They measure different things:
+
+[CFPB-CC] The APR (annual percentage rate) is the stated annual cost of
+BORROWING. It is used to compare loan and credit products. It includes
+the interest rate and fees calculated over one year.
+
+APY (annual percentage yield) is the effective annual rate of RETURN on a
+savings account or investment after accounting for how often interest
+compounds within the year. When interest compounds more than once per year
+(for example, monthly), the APY is higher than the nominal annual rate.
+
+APR is used in the context of debt (what you pay). APY is used in the
+context of savings and deposits (what you earn). They are computed
+differently and cannot be compared directly.
+
+NOTE: APY is a standard financial definition included here for completeness.
+The CFPB credit card key terms page (Source B) defines APR clearly and is
+the source of the APR claim above. APY is not discussed in that retrieved
+text. The APY explanation is not drawn from a confirmed retrieved source.
+
+
+HOW FINPATH AI USES COMPOUND INTEREST
+
+[FINPATH] The project_savings_growth tool calculates future value using
+monthly compounding. The formula applies one-twelfth of the annual interest
+rate each month:
+
+  Monthly rate (r) = annual_rate / 12
+
+  When r > 0 (the normal case):
+    Balance after N months = principal * (1 + r)^N
+                           + monthly_contribution * ((1 + r)^N - 1) / r
+
+  When annual_rate == 0 (zero-interest case):
+    Balance after N months = principal + monthly_contribution * N
+
+The zero-interest branch is handled explicitly in the code (tools/core/finance.py,
+lines 143-144) to avoid a division-by-zero error in the annuity formula.
+
+[FINPATH] CONTRIBUTION TIMING: The formula above is the future value of an
+ordinary annuity, meaning each monthly_contribution is assumed to occur at
+the END of the month. The principal earns compound growth for the full N
+months, while each contribution earns growth only for the months remaining
+after it is made. An annuity-due (beginning-of-month) formula would include
+an additional (1 + r) multiplier; the tool does not apply that multiplier.
+
+[FINPATH] The tool requires annual interest rates to be supplied as decimals.
+For example, 5% per year is entered as 0.05, not 5. The tool raises an error
+if a rate greater than 1 is supplied.
+
+[FINPATH] The default annual growth rate when a user does not specify one is
+5% per year (0.05). This default is always stated in the agent response.
+
+
+KEY TAKEAWAYS
+
+- Compound interest means earning interest on previously accumulated
+  interest, not just the original principal. [Investor.gov -- not body-verified]
+- For credit card debt, interest compounds daily, increasing the amount
+  owed faster than simple interest would. [CFPB-CC -- confirmed]
+- APR (annual percentage rate) measures the cost of borrowing per year.
+  APY (annual percentage yield) measures the effective annual return on
+  savings after compounding. They are not interchangeable.
+- For savings and investments, more frequent compounding produces a higher
+  effective annual return than the stated nominal rate alone.
+- FinPath AI's project_savings_growth tool uses monthly compounding and
+  handles the zero-interest edge case with simple accumulation.
+
+
+REFERENCES
+
+1. U.S. Securities and Exchange Commission -- Investor.gov.
+   "What is compound interest?"
+   https://www.investor.gov/additional-resources/information/youth/teachers-classroom-resources/what-compound-interest
+   NOTE: Body content not independently verified in this environment.
+
+2. Consumer Financial Protection Bureau (CFPB).
+   "Credit cards key terms."
+   https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/
+   Full text retrieved November 18, 2026.
