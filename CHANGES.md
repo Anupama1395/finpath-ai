@@ -25,6 +25,8 @@ This file tracks changes I made in **IBM Bob IDE**: what changed, **why**, and h
 | 17 | Steps 1–3 polish: help text on Step 1 inputs, upload label fixed, hero question chip on Step 2, plain-English takeaway + full goal summary on Step 3, width="stretch" cleanup, README live link | ✅ done | `paridhi_10_steps-polish.png` |
 | 18 | Step 3 download report + rule-based suggestions: Download summary now returns a real markdown report (profile, health score, question, answer, what-if), 2–3 deterministic suggestions, no product recommendations | ✅ done | `paridhi_11_download-report.png` |
 | 19 | "How to use FinPath" manual on Step 1: collapsible expander with what FinPath is, the 3 steps, what each input means, upload/save profile help, and 4 Q&As | ✅ done | `paridhi_12_how-to-use.png` |
+| 20 | RAG knowledge base (`finpath_kb`), `finpath_kb_agent`, collaborator wiring in `finpath_agent.yaml`, and live Orchestrate import (PR #14) | ✅ done | `kartikeya_01_rag-plan.png` – `kartikeya_05_agent-integration.png` |
+| 21 | RAG documentation updates in `README.md` and `docs/ARCHITECTURE.md` (folder layout, Mermaid diagram, tool table, import commands, delegation & citation rules) | ✅ done | `kartikeya_06_documentation.png`, `kartikeya_07_architecture.png`, `kartikeya_08_changes.png` |
 
 
 Status key: ⏳ planned · 🔨 in progress · ✅ done · 🤝 discuss first
@@ -314,3 +316,25 @@ python-dotenv
 **Why:** New users and judges can understand the app without guessing what to enter — the manual explains it in plain English, without changing the flow for returning users.
 
 **Checked by:** 217 tests passed. Bob session (`paridhi_12_how-to-use.png`). Verified on localhost.
+
+## 20. RAG knowledge base & `finpath_kb_agent` collaborator ✅
+
+**What (done 2026-11-19, branch `kartikeya/rag`, merged in PR #14):**
+- Added four cited, public-source personal finance explainers in `knowledge/` (`emergency_fund_guide.txt`, `compound_interest.txt`, `debt_payoff_strategies.txt`, `savings_rate.txt`) with no PII.
+- Created `knowledge/finpath_kb.yaml` (`finpath_kb`) and `agents/finpath_kb_agent.yaml` (retrieval-only, `tools: []`, citation-backed, no calculations or product recommendations).
+- Added `finpath_kb_agent` under `collaborators:` in `agents/finpath_agent.yaml` and added workflow rule `k.` to delegate conceptual "why" questions. No tool or math code was modified.
+- Imported `finpath_kb` (4 docs, 27.5 KB, `built_in_index_status: ready`), `finpath_kb_agent`, and updated `finpath_agent` on the Tokyo watsonx Orchestrate instance.
+
+**Why:** Enables cited, grounded answers to conceptual "why" questions (per `SPEC.md` §2a/§8) while keeping all calculations strictly deterministic on `finpath_agent`'s tools.
+
+**Checked by:** 217 tests passed (`python -m pytest tests/ --ignore=tests/smoke_test.py -q`), `orchestrate knowledge-bases status --name finpath_kb` (`ready`), `orchestrate agents list` showing the collaborator wiring, and the Orchestrate chat test: "Why do I need an emergency fund?" handed off to `finpath_kb_agent`, retrieved from `emergency_fund_guide.txt` and returned a cited answer with the disclaimer. Live app (finpath-ai-copilot.streamlit.app) verified by Paridhi on 2026-11-20: the "why" answer displays. Bob sessions: `bob_sessions/kartikeya_01_rag-plan.png` through `bob_sessions/kartikeya_05_agent-integration.png`.
+
+## 21. RAG documentation (`README.md` & `docs/ARCHITECTURE.md`) ✅
+
+**What (done 2026-11-20, branch `kartikeya/rag-docs`):**
+- Updated `README.md` repository structure and added a **Knowledge base (RAG)** section with the exact `orchestrate knowledge-bases import`, `status`, and `agents import` commands.
+- Updated `docs/ARCHITECTURE.md` Mermaid diagram, tool reference table, and added a **Knowledge agent (RAG)** section documenting delegation triggers, citation format, and collaborator role boundaries.
+
+**Why:** Documents the RAG architecture and exact reproducible Orchestrate import steps for teammates and judges.
+
+**Checked by:** 217 tests passed (`python -m pytest tests/ --ignore=tests/smoke_test.py -q`). Bob sessions: `bob_sessions/kartikeya_06_documentation.png`, `bob_sessions/kartikeya_07_architecture.png`, `bob_sessions/kartikeya_08_changes.png`.
