@@ -30,6 +30,8 @@ flowchart TD
 
     Core["tools/core/finance.py<br/>pure Python math, stdlib only"]
 
+    KBAgent["IBM watsonx Orchestrate<br/>finpath_kb_agent - knowledge retrieval<br/>knowledge base: finpath_kb"]
+
     User -->|"fills profile, asks question"| UI
     UI -->|"ask_agent with message, profile, thread_id"| Client
     Client -->|"profile block + question via ADK RunClient"| WXO
@@ -39,6 +41,7 @@ flowchart TD
     WXO -->|"reply, tool names, thread_id"| Client
     Client -->|"reply, tools used, verified flag"| UI
     UI -->|"chat, tool chips, verified badge"| User
+    WXO -.->|"why / conceptual"| KBAgent
 ```
 
 ## System overview
@@ -169,6 +172,25 @@ No secrets are stored in `.env` for the UI path. The `.env` / `.env.example` are
 | stress_test | stress_tool.py | Re-runs cash flow and emergency coverage after an income or expense % shock |
 | goal_plan | goal_tool.py | Whether a savings target is reachable in N months, and the required monthly contribution |
 | multi_debt_plan | multi_debt_tool.py | Avalanche vs snowball payoff for multiple debts; picks the lower-interest strategy |
+| finpath_kb_agent | agents/finpath_kb_agent.yaml | Knowledge retrieval from `finpath_kb`; no calculation — returns citation-backed conceptual answers only |
+
+## Knowledge agent (RAG)
+
+**Agent name:** `finpath_kb_agent`
+**Knowledge base:** `finpath_kb` (defined in `knowledge/finpath_kb.yaml`)
+**Documents indexed:** `emergency_fund_guide.txt`, `compound_interest.txt`, `debt_payoff_strategies.txt`, `savings_rate.txt`
+
+### Delegation trigger
+
+`finpath_agent` delegates to `finpath_kb_agent` for conceptual "why" and "how does X work" questions — for example: "why should I build an emergency fund?", "how does compound interest work?", "what is the debt avalanche vs snowball?", "what is the 50/30/20 rule?". Numerical questions (balances, payoff dates, projections) remain with `finpath_agent` and its calculation tools.
+
+### Citation behaviour
+
+Every factual claim in a `finpath_kb_agent` response must cite the source document (filename) and the relevant section heading, using the format: _(Source: \<document_name\>, \<section\>)_. `finpath_kb_agent` never performs arithmetic, estimates values, or extrapolates numbers; figures are reproduced only if they appear verbatim in the retrieved knowledge base content. It never recommends financial products, securities, or buy/sell actions.
+
+### Role boundary
+
+`finpath_kb_agent` is a collaborator for `finpath_agent` and is not directly user-facing. It does not greet users, ask clarifying questions, or behave as a conversational assistant.
 
 ## Guardrails
 

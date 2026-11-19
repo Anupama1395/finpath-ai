@@ -26,13 +26,19 @@ FinPath AI lets you describe your financial situation (income, expenses, savings
 
 ```
 .github/workflows/   GitHub Actions CI (runs 148+ unit tests on every push)
-agents/              ADK agent YAML definitions (finpath_agent.yaml)
+agents/              ADK agent YAML definitions (finpath_agent.yaml, finpath_kb_agent.yaml)
 agent/               orchestrate.py — thin ADK client (ask_agent + health_check)
 app/
   main.py            Streamlit UI (3-step wizard + chat)
   api_client.py      ADK RunClient/ThreadsClient wrapper
 data/
   profiles.json      6 synthetic sample profiles (no real PII)
+knowledge/
+  emergency_fund_guide.txt      Explainer: why emergency funds matter, how to build one
+  compound_interest.txt         Explainer: how compound interest works
+  debt_payoff_strategies.txt    Explainer: debt avalanche vs snowball
+  savings_rate.txt              Explainer: personal savings rate, 50/30/20 framework
+  finpath_kb.yaml               Knowledge base definition for finpath_kb
 docs/
   SPEC.md            Technical specification
   ARCHITECTURE.md    System design + data flow diagrams
@@ -87,6 +93,19 @@ done
 # Import agent
 orchestrate agents import --file agents/finpath_agent.yaml
 ```
+
+### Knowledge base (RAG)
+```bash
+orchestrate knowledge-bases import --file knowledge/finpath_kb.yaml
+
+# Wait until built_in_index_status: ready
+orchestrate knowledge-bases status --name finpath_kb
+
+orchestrate agents import --file agents/finpath_kb_agent.yaml
+orchestrate agents import --file agents/finpath_agent.yaml
+```
+
+`finpath_kb_agent` answers conceptual "why" questions (e.g. "why should I build an emergency fund?") with citations drawn from the knowledge base and never calculates numbers; all numerical questions remain with the existing tool-based agent.
 
 ### Run
 ```bash
