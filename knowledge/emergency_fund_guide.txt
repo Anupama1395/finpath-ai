@@ -1,0 +1,148 @@
+EMERGENCY FUND GUIDE
+FinPath AI Knowledge Base
+
+SOURCE
+Title:   An Essential Guide to Building an Emergency Fund
+Publisher: Consumer Financial Protection Bureau (CFPB)
+URL:     https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/
+Last modified: October 29, 2025
+Note:    All claims in this document marked [CFPB] are drawn directly from
+         the full text of the above article, retrieved November 18, 2026.
+         Claims not marked [CFPB] are general explanations or FinPath AI
+         system notes and have not been independently verified against an
+         external source.
+
+
+WHAT IS AN EMERGENCY FUND
+
+[CFPB] An emergency fund is a cash reserve that is specifically set aside
+for unplanned expenses or financial emergencies.
+
+[CFPB] Common examples include car repairs, home repairs, medical bills,
+or a loss of income.
+
+[CFPB] In general, emergency savings can be used for large or small
+unplanned bills or payments that are not part of routine monthly expenses
+and spending.
+
+
+WHY DO YOU NEED AN EMERGENCY FUND
+
+[CFPB] Without savings, a financial shock -- even a minor one -- could set
+you back, and if it turns into debt, it can potentially have a lasting impact.
+
+[CFPB] Research suggests that individuals who struggle to recover from a
+financial shock have less savings to help protect against a future emergency.
+
+[CFPB] Without savings, people may rely on credit cards or loans, which can
+lead to debt that is generally harder to pay off.
+
+[CFPB] People may also pull from other savings, like retirement funds, to
+cover emergency costs.
+
+
+HOW MUCH DO YOU NEED
+
+[CFPB] The amount you need to have in an emergency savings fund depends on
+your situation.
+
+[CFPB] Think about the most common kind of unexpected expenses you have had
+in the past and how much they cost. This may help you set a goal.
+
+[CFPB] Even a small amount can provide some financial security.
+
+NOTE ON COVERAGE THRESHOLDS: The CFPB article does not prescribe a universal
+target such as "three to six months of expenses."
+
+The FinPath AI tool emergency_fund_check applies hardcoded internal rules
+(tools/core/finance.py, lines 659–679) that are not configurable by the
+caller and are not attributed to any external source:
+
+  - Below 3 months covered:         status = "low"
+                                     gap_to_3_months = 3 × monthly_expenses
+                                       − current_savings
+  - 3 to 6 months covered (incl.):  status = "ok"
+  - Above 6 months covered:         status = "strong"
+
+The gap calculation always targets the 3-month lower bound. There is no
+configurable threshold parameter; these boundaries are literal constants in
+the function body.
+
+
+STRATEGIES FOR BUILDING AN EMERGENCY FUND
+
+[CFPB] STRATEGY: CREATE A SAVINGS HABIT
+Building a savings of any size is easier when you are able to consistently
+put money away. Key principles include:
+- Set a specific goal.
+- Create a system for making consistent contributions.
+- Regularly monitor your progress.
+
+[CFPB] STRATEGY: MANAGE YOUR CASH FLOW
+Your cash flow is the timing of when money comes in (income) and goes out
+(expenses and spending). Actively tracking it helps you see opportunities to
+adjust spending and savings. You may also be able to work with creditors to
+adjust bill due dates.
+
+[CFPB] STRATEGY: TAKE ADVANTAGE OF ONE-TIME OPPORTUNITIES
+Saving all or a portion of occasional income -- such as a tax refund or a
+cash gift -- could help you quickly set up or grow your emergency fund. This
+is especially useful for people with irregular income.
+
+[CFPB] STRATEGY: MAKE YOUR SAVING AUTOMATIC
+Set up recurring transfers from your checking account to a dedicated savings
+account. Once set up, you make consistent contributions without having to
+think about it. Monitor balances to avoid overdraft fees.
+
+[CFPB] STRATEGY: SAVE THROUGH WORK
+Some employers allow employees to split direct deposits between checking and
+savings accounts. This makes saving automatic for those with regular salaries.
+
+
+WHERE TO KEEP AN EMERGENCY FUND
+
+[CFPB] You want your emergency fund to be safe, accessible, and in a place
+where you are not tempted to spend it on non-emergencies.
+
+[CFPB] Options identified by the CFPB include:
+- Bank or credit union account: generally considered one of the safest
+  places to put money; a dedicated account keeps it separate.
+- Prepaid card: a card loaded with money, not connected to a bank account;
+  you can only spend the amount on the card.
+- Cash: an option, but cash can be stolen, lost, or destroyed.
+
+
+WHEN TO USE AN EMERGENCY FUND
+
+[CFPB] Set personal guidelines for what constitutes an emergency or
+unplanned expense. Not every unexpected expense is a dire emergency, but
+try to stay consistent.
+
+[CFPB] Having a reserve fund for financial shocks helps you avoid relying
+on other forms of credit or loans that can turn into debt.
+
+[CFPB] If a credit card or loan is used instead, the original expense may
+grow significantly larger because of interest and fees.
+
+[CFPB] Do not be afraid to use the fund if you need it. If you spend it
+down, work to build it back up. Practicing savings skills over time makes
+this easier.
+
+
+KEY TAKEAWAYS
+
+- An emergency fund is a dedicated cash reserve for unplanned expenses.
+- The right amount depends on individual circumstances; even a small reserve
+  helps. No universal month-count target is prescribed by the CFPB source.
+- Building the fund gradually through consistent, automated contributions is
+  an effective approach.
+- Keep the fund somewhere safe, accessible, and separate from daily spending.
+- Rebuild the fund after using it.
+
+
+REFERENCES
+
+1. Consumer Financial Protection Bureau (CFPB).
+   An Essential Guide to Building an Emergency Fund.
+   https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/
+   Last modified: October 29, 2025.

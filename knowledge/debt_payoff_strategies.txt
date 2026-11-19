@@ -1,0 +1,167 @@
+DEBT PAYOFF STRATEGIES
+FinPath AI Knowledge Base
+
+SOURCES
+Source A:
+  Title:   "How to Get Out of Debt"
+  Publisher: Federal Trade Commission (FTC) -- Consumer Information
+  URL:     https://consumer.ftc.gov/articles/how-get-out-debt
+  Note:    URL confirmed accessible November 18, 2026; full body content
+           could not be retrieved (automated request blocked). Claims marked
+           [FTC -- not body-verified] are attributed to this article but
+           were not confirmed against the retrieved text.
+
+Source B:
+  Title:   "Credit cards key terms"
+  Publisher: Consumer Financial Protection Bureau (CFPB)
+  URL:     https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/
+  Note:    Full text retrieved November 18, 2026. Claims marked [CFPB-CC]
+           are drawn directly from confirmed retrieved text.
+
+Source C:
+  Title:   "An Essential Guide to Building an Emergency Fund"
+  Publisher: Consumer Financial Protection Bureau (CFPB)
+  URL:     https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/
+  Note:    Full text retrieved November 18, 2026. Claims marked [CFPB-EF]
+           are drawn directly from confirmed retrieved text.
+
+Source D:
+  Title:   Internal FinPath AI system documentation
+  Note:    Claims marked [FINPATH] describe how FinPath AI tools work.
+           These are system facts, not claims attributed to any external source.
+
+
+THE COST OF CARRYING DEBT
+
+[CFPB-CC] A credit card's interest rate is the price you pay for borrowing
+money. For credit cards, interest rates are typically stated as a yearly
+rate called the annual percentage rate (APR).
+
+[CFPB-CC] For credit cards specifically, interest is calculated using a
+daily periodic rate. Unpaid interest is added to the balance each day, and
+the next day's interest is calculated on that larger balance. This daily
+compounding applies to credit card debt; other debt types (such as
+mortgages or auto loans) may use different compounding schedules.
+
+[CFPB-EF] Relying on credit cards or loans to cover expenses can lead to
+debt that is generally harder to pay off.
+
+[CFPB-EF] If a credit card or loan is used to pay for an expense, the
+original cost may grow significantly larger because of interest and fees.
+
+The implication for any interest-bearing debt is that the longer it remains
+unpaid, the greater the total amount repaid. This is a mathematical
+consequence of compound growth, not a claim drawn from the confirmed sources
+above. The magnitude depends on the interest rate, compounding schedule,
+and payment amount.
+
+
+TWO COMMON PAYOFF STRATEGIES
+
+NOTE: The following descriptions of the avalanche and snowball methods are
+standard definitions used in personal finance education. They are attributed
+to the FTC article cited above, but that article's body content was not
+independently verified in this environment. These descriptions represent
+the standard formulation of each method.
+
+[FTC -- not body-verified] THE AVALANCHE METHOD
+Focus extra payments on the debt with the highest interest rate first, while
+making minimum payments on all other debts. Once the highest-rate debt is
+paid off, direct the freed-up payment toward the next highest-rate debt.
+
+Effect: Under the following assumptions, the avalanche method minimises
+the total interest paid over the life of all debts compared to any other
+payment-ordering strategy:
+  - The same total monthly payment budget is used across all compared
+    strategies.
+  - Minimum payments are maintained on every debt in every month.
+  - When a debt is fully cleared, its freed-up payment amount is
+    redirected in full to the next target debt.
+  - Interest rates on all debts remain constant throughout.
+  - No new debts are added, no debts are refinanced, and no unusual
+    fees or penalties are incurred.
+
+Note: minimum required payments may themselves decrease as individual
+balances fall (since minimums are often a percentage of the balance).
+This assumption list does not require minimums to be fixed dollar amounts.
+Real-world outcomes depend on whether these assumptions hold.
+
+[FTC -- not body-verified] THE SNOWBALL METHOD
+Focus extra payments on the debt with the smallest outstanding balance first,
+while making minimum payments on all other debts. Once the smallest debt is
+paid off, direct the freed-up payment toward the next smallest balance.
+
+Effect: The snowball method pays off individual debts faster, which can
+provide psychological motivation through visible progress. It may result in
+more total interest paid than the avalanche method if the smallest-balance
+debts do not also carry the highest interest rates.
+
+
+CHOOSING BETWEEN THE TWO METHODS
+
+Neither method is universally superior. The choice depends on personal
+circumstances:
+
+- If minimising total interest cost is the priority, the avalanche method
+  is preferable.
+- If staying motivated by seeing debts eliminated quickly matters more,
+  the snowball method may be more effective in practice.
+- In cases where the smallest-balance debt also carries the highest interest
+  rate, both methods produce the same result.
+
+
+PAYING OFF DEBT VERSUS INVESTING
+
+[FINPATH] FinPath AI includes a debt_vs_invest tool that models two
+scenarios over a chosen time horizon: (1) paying off a debt first before
+investing, and (2) investing immediately while making only minimum debt
+payments. Both scenarios use the same total monthly budget and horizon.
+
+[FINPATH] The tool compares projected net worth (investments minus remaining
+debt) at the end of the horizon under each strategy. The comparison is
+driven by the relationship between the annual debt interest rate and the
+assumed annual investment return rate.
+
+[FINPATH] The agent flags the comparison explicitly: if the debt rate
+exceeds the assumed investment rate (default 7% per year), the agent
+highlights the debt-payoff-first scenario as producing a higher projected
+net worth in the tool's model.
+
+NOTE: The debt_vs_invest tool produces illustrative projections based
+entirely on user-supplied figures and stated assumptions. It does not
+account for tax treatment, employer matching contributions, risk tolerance,
+liquidity needs, or other personal factors. The output is not financial
+advice. Actual outcomes will differ from projections.
+
+
+KEY TAKEAWAYS
+
+- For credit card debt, interest compounds daily; unpaid balances grow
+  faster than simple interest calculations would suggest. [CFPB-CC -- confirmed]
+- The avalanche method (highest rate first) minimises total interest paid
+  under fixed-payment, constant-rate assumptions. [FTC -- not body-verified]
+- The snowball method (smallest balance first) reduces the number of open
+  debts quickly, which can help motivation. [FTC -- not body-verified]
+- When a debt rate exceeds the assumed investment return in the model,
+  the debt-payoff-first scenario produces a higher projected net worth.
+  This is an illustrative comparison, not financial advice.
+- FinPath AI's debt_vs_invest and multi_debt_plan tools model these
+  strategies using user-supplied figures as illustrative projections.
+
+
+REFERENCES
+
+1. Federal Trade Commission (FTC).
+   "How to Get Out of Debt."
+   https://consumer.ftc.gov/articles/how-get-out-debt
+   NOTE: Body content not independently verified in this environment.
+
+2. Consumer Financial Protection Bureau (CFPB).
+   "Credit cards key terms."
+   https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/
+   Full text retrieved November 18, 2026.
+
+3. Consumer Financial Protection Bureau (CFPB).
+   "An Essential Guide to Building an Emergency Fund."
+   https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/
+   Full text retrieved November 18, 2026.

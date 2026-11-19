@@ -1,0 +1,167 @@
+SAVINGS RATE
+FinPath AI Knowledge Base
+
+SOURCES
+Source A:
+  Title:   "Personal Saving Rate"
+  Publisher: U.S. Bureau of Economic Analysis (BEA)
+  URL:     https://www.bea.gov/data/income-saving/personal-saving-rate
+  Note:    Full text retrieved November 18, 2026. Claims marked [BEA] are
+           drawn directly from the confirmed retrieved text.
+
+Source B:
+  Title:   "Personal Saving Rate [PSAVERT]" -- Notes section
+  Publisher: Federal Reserve Bank of St. Louis (FRED), citing BEA
+  URL:     https://fred.stlouisfed.org/series/PSAVERT
+  Note:    Full text retrieved November 18, 2026. Claims marked [FRED/BEA]
+           are drawn directly from confirmed retrieved text. FRED cites BEA
+           as the originating source for the series definition.
+
+Source C:
+  Title:   "All Your Worth: The Ultimate Lifetime Money Plan"
+  Author:  Elizabeth Warren and Amelia Warren Tyagi
+  Publisher: Free Press, 2005
+  Note:    Origin of the 50/30/20 budgeting framework. This is a book, not
+           a U.S. government publication. Claims marked [WARREN & TYAGI]
+           are attributed to this source. The book was not retrieved in
+           this environment.
+
+Source D:
+  Title:   Internal FinPath AI system documentation
+  Note:    Claims marked [FINPATH] describe how FinPath AI tools work.
+           These are system facts, not claims attributed to any external source.
+
+
+THE BEA NATIONAL SAVINGS RATE (MACROECONOMIC MEASURE)
+
+[BEA] The U.S. personal saving rate is personal saving as a percentage of
+disposable personal income. In other words, it is the percentage of
+people's incomes left after they pay taxes and spend money.
+
+[FRED/BEA] More precisely, the personal saving rate is calculated as the
+ratio of personal saving to disposable personal income (DPI). Personal
+saving is equal to personal income less personal outlays and personal taxes.
+
+  Personal Saving = Personal Income - Personal Outlays - Personal Taxes
+  BEA Savings Rate = Personal Saving / Disposable Personal Income
+
+Where disposable personal income (DPI) is personal income after taxes.
+
+[BEA] The personal saving rate is tracked to learn about Americans'
+financial health and to help predict consumer behavior and economic growth.
+
+
+HOUSEHOLD SAVINGS RATE (PERSONAL APPROXIMATION)
+
+The BEA definition is a national accounting measure. At the individual
+household level, a simplified approximation is commonly used:
+
+  Household Savings Rate = Amount Saved / Take-Home Income
+
+Or equivalently:
+
+  Household Savings Rate = (Take-Home Income - Total Spending) / Take-Home Income
+
+NOTE: "Take-home income" here means income after taxes, which is closer to
+the BEA's disposable personal income concept than gross pre-tax income is.
+Using gross income as the denominator would produce a lower savings-rate
+figure for the same amount saved. This household version is an
+approximation that is not drawn from a confirmed external source; the BEA
+definition above is the authoritative macroeconomic measure.
+
+A savings rate of 10% means that for every $100 of take-home income, $10
+is set aside rather than spent. A higher savings rate means more capital is
+available for building an emergency fund, paying down debt, or investing.
+
+
+THE 50/30/20 BUDGETING FRAMEWORK
+
+[WARREN & TYAGI -- book, not body-verified in this environment] The
+50/30/20 framework is a budgeting heuristic introduced by Senator Elizabeth
+Warren and Amelia Warren Tyagi in "All Your Worth: The Ultimate Lifetime
+Money Plan" (Free Press, 2005).
+
+Under this framework, after-tax (take-home) income is divided into three
+broad categories:
+  - 50% toward needs (housing, food, utilities, minimum debt payments)
+  - 30% toward wants (entertainment, dining out, hobbies)
+  - 20% toward savings and additional debt repayment
+
+The 20% category combines two distinct uses of money:
+  (a) Savings contributions — money set aside in savings or investment
+      accounts, which increases net worth directly.
+  (b) Additional debt repayment — extra payments above the required
+      minimum, which reduce outstanding debt and increase net worth
+      indirectly by lowering future interest costs.
+
+These are not interchangeable for every purpose. Debt principal repayment
+reduces a liability; it does not create a savings balance. If the goal is
+to build an emergency fund or investment portfolio, only the savings
+contribution portion of the 20% contributes directly to that balance.
+
+The full 20% applied to after-tax income does not necessarily equal a 20%
+household savings rate in the sense of the savings-rate formula above.
+Only the savings-contribution portion of the 20% counts as "amount saved"
+in the numerator of that formula. If some of the 20% goes to debt
+repayment, the actual household savings rate would be less than 20%.
+
+The 20% figure is applied to after-tax income, consistent with the
+household savings-rate approximation above (which also uses take-home
+income as the denominator). Both are based on after-tax income, not gross
+pre-tax income.
+
+NOTE: The 50/30/20 rule is a widely referenced heuristic, not a legally
+prescribed standard or government guideline. It is presented here as a
+named, popularly used framework with a known origin. Individual
+circumstances vary widely. FinPath AI does not endorse any specific
+savings-rate target.
+
+
+HOW SAVINGS RATE INTERACTS WITH INVESTMENT GROWTH
+
+[FINPATH] In FinPath AI, monthly_contribution is a direct input to the
+project_savings_growth tool. A larger monthly contribution increases both
+the principal-compounding effect and the contribution-compounding effect,
+producing a higher projected future balance at any given time horizon.
+
+[FINPATH] The savings_headroom tool calculates the maximum additional
+monthly savings a user could make, given their income, expenses, and
+existing contributions. This is distinct from their current savings rate.
+
+The relationship between savings rate and long-term wealth is a consequence
+of compound growth: a higher savings rate means more capital is put to work
+earlier, and compound interest has more time to act on a larger base.
+This is a mathematical property, not a claim attributed to a specific source.
+
+
+KEY TAKEAWAYS
+
+- The BEA national savings rate = personal saving / disposable personal
+  income (after-tax income). [BEA / FRED -- confirmed]
+- The household approximation uses the same after-tax (take-home) income
+  as the denominator, not gross pre-tax income.
+- The 50/30/20 framework (Warren & Tyagi, 2005) allocates 20% of after-tax
+  income to savings and extra debt repayment. This is consistent with the
+  household approximation's after-tax denominator.
+- A higher savings rate means more capital available for emergency funds,
+  debt repayment, and investment growth.
+- FinPath AI's project_savings_growth and savings_headroom tools use
+  monthly contribution and take-home income figures as illustrative inputs.
+
+
+REFERENCES
+
+1. U.S. Bureau of Economic Analysis (BEA).
+   "Personal Saving Rate."
+   https://www.bea.gov/data/income-saving/personal-saving-rate
+   Full text retrieved November 18, 2026.
+
+2. Federal Reserve Bank of St. Louis (FRED), citing BEA.
+   "Personal Saving Rate [PSAVERT]."
+   https://fred.stlouisfed.org/series/PSAVERT
+   Full text retrieved November 18, 2026.
+
+3. Warren, Elizabeth, and Amelia Warren Tyagi.
+   "All Your Worth: The Ultimate Lifetime Money Plan."
+   Free Press, 2005.
+   NOTE: Book source; body content not retrieved in this environment.

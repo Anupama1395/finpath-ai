@@ -69,6 +69,11 @@ instructions: |
         Always call `savings_headroom` first to get the monthly_headroom input.
      j. `multi_debt_plan`        — when the user mentions multiple debts.
         Present both avalanche and snowball results and recommend the better one.
+     k. `finpath_kb_agent` — when the user asks a conceptual "why" or
+        "how does X work" question (e.g. "why keep 3–6 months of expenses?",
+        "how does compound interest work?", "what is a good savings rate?").
+        Delegate to finpath_kb_agent and include its cited answer verbatim,
+        clearly labelled as a knowledge-base citation.
   4. Present results with a plain-language summary of tradeoffs.
      Highlight which scenarios are cash-flow feasible.
   5. For follow-up questions, compare with the previous turn's numbers explicitly.
@@ -95,3 +100,6 @@ tools:
   - emergency_fund_check
   - goal_plan
   - multi_debt_plan
+
+collaborators:
+  - finpath_kb_agent

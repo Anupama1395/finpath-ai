@@ -1,0 +1,14 @@
+spec_version: v1
+kind: knowledge_base
+name: finpath_kb
+description: >-
+  FinPath AI knowledge base. Plain-text explainers on emergency funds,
+  compound interest, debt payoff strategies, and savings rate. Used by
+  finpath_kb_agent to answer conceptual questions with citations.
+documents:
+  - emergency_fund_guide.txt
+  - compound_interest.txt
+  - debt_payoff_strategies.txt
+  - savings_rate.txt
+vector_index:
+  extraction_strategy: standard
