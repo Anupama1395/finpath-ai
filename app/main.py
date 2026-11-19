@@ -118,7 +118,11 @@ label,.stNumberInput label,.stTextInput label,.stTextArea label,.stSelectbox lab
 .sug-btn .stButton button{
   background:var(--surface2)!important;border:1px solid var(--border)!important;color:var(--muted)!important;
   font-size:.65rem!important;padding:.55rem .9rem!important;text-align:left!important;
-  white-space:normal!important;height:auto!important;line-height:1.45!important;border-radius:var(--radius-sm)!important}
+  white-space:normal!important;height:auto!important;line-height:1.45!important;border-radius:var(--radius-sm)!important;
+  overflow:visible!important}
+.sug-btn .stButton button p,.sug-btn .stButton button span,.sug-btn .stButton button div{
+  white-space:normal!important;overflow:visible!important;text-overflow:unset!important;
+  display:inline!important}
 .sug-btn .stButton button:hover{border-color:var(--orangeB)!important;color:var(--text)!important;background:rgba(232,96,60,.05)!important}
 
 .streamlit-expanderHeader{font-family:var(--mono)!important;font-size:.62rem!important;letter-spacing:.07em!important;text-transform:uppercase!important;color:var(--muted)!important;background:var(--surface)!important;border-radius:var(--radius-sm)!important}
@@ -994,22 +998,6 @@ and see what changes if you try something different.</p>
       </div>
     </div>
 
-    <!-- How it works strip -->
-    <div class="how-strip">
-      <div class="how-step">
-        <span class="how-num">1&nbsp;&mdash;</span>
-        <span class="how-text">Pick a profile</span>
-      </div>
-      <div class="how-step">
-        <span class="how-num">2&nbsp;&mdash;</span>
-        <span class="how-text">Ask a question</span>
-      </div>
-      <div class="how-step">
-        <span class="how-num">3&nbsp;&mdash;</span>
-        <span class="how-text">See the numbers &amp; try a what-if</span>
-      </div>
-    </div>
-
     <!-- Hero question example -->
     <div class="hero-q">
       &ldquo;Can I invest $300 more a month and still keep three months of emergency cash?&rdquo;
@@ -1870,6 +1858,7 @@ def render_step3() -> None:
             "```\nYour question + profile\n  → IBM watsonx Orchestrate agent\n    → @tool functions\n"
             "      → deterministic math (pure Python, no AI)\n        → verified numbers\n"
             "          → plain-language explanation\n```\n\n"
+            "For knowledge questions, the agent retrieves from our 4-doc knowledge base and cites the source.\n\n"
             "All projections are illustrative. This is not financial advice."
         )
 
