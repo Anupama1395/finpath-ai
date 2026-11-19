@@ -16,7 +16,7 @@ FinPath AI lets you describe your financial situation (income, expenses, savings
 - **Live financial health score** (0–100) with sub-score breakdown — updates as you type, no agent call
 - **Multi-turn chat** — ask follow-up questions in the same thread; the agent compares old vs new numbers
 - **Tool-trace chips** — every agent reply shows which tools were called
-- **10 financial tools** — cash flow, debt payoff, emergency fund, savings projections, stress test, debt-vs-invest simulation, and more
+- **12 financial tools** — cash flow, debt payoff, emergency fund, savings projections, stress test, debt-vs-invest simulation, and more
 
 > FinPath AI provides **illustrative projections only**. It is not financial advice and never recommends specific products or securities.
 
@@ -25,7 +25,7 @@ FinPath AI lets you describe your financial situation (income, expenses, savings
 ## Repo layout
 
 ```
-.github/workflows/   GitHub Actions CI (runs 148+ unit tests on every push)
+.github/workflows/   GitHub Actions CI (runs 217 unit tests on every push)
 agents/              ADK agent YAML definitions (finpath_agent.yaml, finpath_kb_agent.yaml)
 agent/               orchestrate.py — thin ADK client (ask_agent + health_check)
 app/
