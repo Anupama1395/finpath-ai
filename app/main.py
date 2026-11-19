@@ -115,6 +115,16 @@ label,.stNumberInput label,.stTextInput label,.stTextArea label,.stSelectbox lab
 .stButton button[kind="tertiary"]:hover{color:var(--muted)!important}
 
 .profile-selected .stButton button{border-color:var(--orange)!important;background:var(--orangeA)!important;color:var(--orange)!important}
+/* Follow-up suggestion chips: wrap long text instead of clipping.
+   Streamlit renders each st.button in its own container, so the .sug-btn
+   parent div does not wrap the actual button node. Target by data-testid
+   directly — fu_ keys produce secondary-kind buttons in stColumn blocks. */
+[data-testid="stBaseButton-secondary"]{
+  white-space:normal!important;height:auto!important;overflow:visible!important}
+[data-testid="stBaseButton-secondary"] p,
+[data-testid="stBaseButton-secondary"] span,
+[data-testid="stBaseButton-secondary"] div{
+  white-space:normal!important;overflow:visible!important;text-overflow:unset!important}
 .sug-btn .stButton button{
   background:var(--surface2)!important;border:1px solid var(--border)!important;color:var(--muted)!important;
   font-size:.65rem!important;padding:.55rem .9rem!important;text-align:left!important;
